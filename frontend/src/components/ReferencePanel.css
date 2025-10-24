@@ -1,0 +1,124 @@
+/* Reference Panel */
+.reference-panel {
+  width: 0;
+  background: #ffffff !important;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: 20px;
+  margin-left: 0;
+}
+
+.reference-panel.open {
+  width: 400px;
+}
+
+/* Reference Header */
+.reference-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e1e5e9;
+  background: #ffffff !important;
+}
+
+.reference-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #2d3748);
+}
+
+.reference-header .close-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--text-secondary, #718096);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.reference-header .close-btn:hover {
+  background: var(--hover-bg, #e2e8f0);
+  color: var(--text-primary, #2d3748);
+}
+
+/* Reference Content */
+.reference-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background: #ffffff !important;
+}
+
+.reference-item {
+  margin-bottom: 20px;
+}
+
+.reference-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.site-favicon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.reference-url {
+  color: var(--primary-color, #3182ce);
+  text-decoration: none;
+  font-size: 14px;
+  word-break: break-all;
+  line-height: 1.4;
+  transition: color 0.2s ease;
+}
+
+.reference-url:hover {
+  color: var(--primary-hover, #2c5aa0);
+  text-decoration: underline;
+}
+
+.reference-description {
+  color: var(--text-secondary, #718096);
+  font-size: 13px;
+  line-height: 1.5;
+  padding-left: 32px;
+}
+
+
+
+.loading-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--text-secondary, #718096);
+  font-size: 14px;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .reference-panel.open {
+    width: 300px;
+  }
+}
+
+/* 確保背景始終為白色 */
+.reference-panel, 
+.reference-header, 
+.reference-content {
+  background: #ffffff !important;
+}

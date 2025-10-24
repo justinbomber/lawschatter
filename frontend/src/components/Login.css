@@ -1,0 +1,517 @@
+/* CSS 自訂屬性 - 淺色主題色彩板與設計系統 */
+:root {
+  /* Primary Colors - 主頁面綠色主題 */
+  --primary-gradient: linear-gradient(135deg, #10a37f 0%, #0d8f6c 100%);
+  --primary-dark: #0d8f6c;
+  --primary-light: #34d399;
+  
+  /* Secondary Colors - 綠色系搭配 */
+  --secondary-gradient: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  --secondary-dark: #10b981;
+  --secondary-light: #6ee7b7;
+  
+  /* Accent Colors - 綠色系強調色 */
+  --accent-gradient: linear-gradient(135deg, #10a37f 0%, #34d399 100%);
+  --accent-dark: #0d8f6c;
+  --accent-light: #34d399;
+  
+  /* Background Colors - 淺色主題 */
+  --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f8f9fa;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.8);
+  
+  /* Text Colors - 淺色主題配綠色強調 */
+  --text-primary: #2d3748;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  --text-accent: #10a37f;
+  
+  /* Border & Shadow - 淺色主題 */
+  --border-color: rgba(0, 0, 0, 0.1);
+  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.15);
+  
+  /* Spacing System - 縮小間距 */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  /* Typography - 調整字體大小 */
+  --font-size-xs: 0.7rem;
+  --font-size-sm: 0.8rem;
+  --font-size-base: 0.9rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.1rem;
+  --font-size-2xl: 1.25rem;
+  --font-size-3xl: 1.5rem;
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+/* 主容器 */
+.login-container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+/* 動態背景 */
+.login-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.6;
+  animation: float 6s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 300px;
+  height: 300px;
+  background: var(--primary-gradient);
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+  opacity: 0.4;
+}
+
+.orb-2 {
+  width: 200px;
+  height: 200px;
+  background: var(--secondary-gradient);
+  top: 60%;
+  right: 20%;
+  animation-delay: 2s;
+  opacity: 0.3;
+}
+
+.orb-3 {
+  width: 250px;
+  height: 250px;
+  background: var(--accent-gradient);
+  bottom: 20%;
+  left: 60%;
+  animation-delay: 4s;
+  opacity: 0.4;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(180deg);
+  }
+}
+
+/* 主要內容區 */
+.login-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+}
+
+/* 登入卡片 */
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-heavy);
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 標題區域 */
+.login-header {
+  text-align: center;
+  margin-bottom: var(--space-lg);
+}
+
+.login-title {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.login-subtitle {
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+  font-weight: 400;
+}
+
+/* 表單樣式 */
+.login-form {
+  margin-bottom: var(--space-md);
+}
+
+.form-group {
+  margin-bottom: var(--space-md);
+}
+
+.form-label {
+  display: block;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+}
+
+.form-input {
+  width: 100%;
+  padding: var(--space-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  transition: all var(--transition-normal);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--text-accent);
+  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* 表單選項 */
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.checkbox-input {
+  display: none;
+}
+
+.checkbox-checkmark {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-right: var(--space-xs);
+  position: relative;
+  transition: all var(--transition-fast);
+}
+
+.checkbox-input:checked + .checkbox-checkmark {
+  background: var(--accent-gradient);
+  border-color: transparent;
+}
+
+.checkbox-input:checked + .checkbox-checkmark::after {
+  content: '✓';
+  position: absolute;
+  color: white;
+  font-size: 12px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.forgot-password {
+  color: var(--text-accent);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: opacity var(--transition-fast);
+}
+
+.forgot-password:hover {
+  opacity: 0.8;
+}
+
+/* 登入按鈕 */
+.login-button {
+  width: 100%;
+  padding: var(--space-sm);
+  background: var(--primary-gradient);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-button:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left var(--transition-slow);
+}
+
+.login-button:hover:before {
+  left: 100%;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+.login-button:active {
+  transform: translateY(0);
+}
+
+.login-button.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 分隔線 */
+.login-divider {
+  position: relative;
+  text-align: center;
+  margin: var(--space-md) 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.login-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-color);
+  z-index: 0;
+}
+
+.login-divider span {
+  background: var(--bg-card);
+  padding: 0 var(--space-md);
+  position: relative;
+  z-index: 1;
+}
+
+/* 社交登入 */
+.social-login {
+  margin-bottom: var(--space-md);
+}
+
+.social-button {
+  width: 100%;
+  padding: var(--space-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  transition: all var(--transition-normal);
+}
+
+.social-button:hover {
+  background: rgba(16, 163, 127, 0.05);
+  border-color: var(--text-accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-light);
+}
+
+/* 註冊提示 */
+.register-prompt {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.register-link {
+  color: var(--text-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  margin-left: var(--space-xs);
+  transition: opacity var(--transition-fast);
+}
+
+.register-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* 錯誤樣式 */
+.form-input.error {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+.error-message {
+  display: block;
+  color: #ff6b6b;
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-xs);
+  animation: fadeIn 0.3s ease;
+}
+
+/* 表單錯誤訊息 */
+.form-error {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid #ff6b6b;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  margin-bottom: var(--space-md);
+  color: #d32f2f;
+  font-size: var(--font-size-sm);
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 條款連結 */
+.terms-link {
+  color: var(--text-accent);
+  text-decoration: none;
+  margin: 0 4px;
+  transition: opacity var(--transition-fast);
+}
+
+.terms-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.checkbox-label {
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .login-content {
+    padding: var(--space-sm);
+  }
+  
+  .login-card {
+    padding: var(--space-md);
+    max-width: 90%;
+  }
+  
+  .login-title {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .orb-1, .orb-2, .orb-3 {
+    opacity: 0.3;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-content {
+    padding: var(--space-xs);
+  }
+  
+  .login-card {
+    padding: var(--space-sm);
+  }
+  
+  .form-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+  }
+  
+  .checkbox-label {
+    font-size: var(--font-size-xs);
+  }
+  
+  .form-group {
+    margin-bottom: var(--space-sm);
+  }
+}

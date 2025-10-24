@@ -1,0 +1,65 @@
+{
+    "case_type": "judgment_analysis",
+    "case_name": "判決書分析",
+    "description": "判決書結構化分析配置",
+    "schema_file": "judgment_analysis_schema.md",
+    "json_schema": {
+        "$schema": "https://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "case_fact_summary": {
+                "type": "string",
+                "description": "全案300字內事實概要，無法律評價。提供整體可閱讀的案件輪廓，描述被害人、主要行為流程、整體金流脈絡。"
+            },
+            "defendants": {
+                "type": "array",
+                "description": "逐一被告層級摘要，每位被告皆需生成六個欄位。若資料不足必須填寫「未知」，不得省略。",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "被告姓名"
+                        },
+                        "role": {
+                            "type": "string",
+                            "description": "被告角色定位與功能，說明被告在整體犯罪結構中的位置與職能。"
+                        },
+                        "A_fact": {
+                            "type": "string",
+                            "description": "法院確認的行為事實與過程，純描述，不含法律用語。敘述法院確認的客觀行為內容與過程，包含行為時間、地點、方式、參與人等要素。若資料不足填寫「未知」。"
+                        },
+                        "B_claim": {
+                            "type": "string",
+                            "description": "被告主張與抗辯理由，無論採信與否均完整列出。列出被告於偵查或審理階段的抗辯內容與理由，無論法院是否採信都必須完整保留。若有多次不同說法可取主要版本或最終陳述。不得混入法院評論。若資料不足填寫「未知」。"
+                        },
+                        "C_court_finding": {
+                            "type": "string",
+                            "description": "法院認定哪些事實成立，採信哪些證據或供述。敘述法院最終認為哪些事實成立、採信哪些證據、排除哪些辯詞。可含「法院認為」「法院採信」「法院不採信」等語。若資料不足填寫「未知」。"
+                        },
+                        "D_court_reason": {
+                            "type": "string",
+                            "description": "法院推論、採信理由、法條適用與量刑考量。敘述法院的推論過程、採信邏輯、法律適用與量刑考量。可包含法律詞彙、判斷語氣與條文引用。若資料不足填寫「未知」。"
+                        },
+                        "E_legal_eval": {
+                            "type": "string",
+                            "description": "法院最終法律評價、罪名與競合處理結果。簡述法院最終的法律結論，包括罪名、競合與量刑方向。可使用法律用語（如「共同正犯」「想像競合」「從一重詐欺罪處斷」等）。若資料不足填寫「未知」。"
+                        }
+                    },
+                    "required": ["name", "role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"]
+                },
+                "minItems": 1
+            },
+            "case_highlights": {
+                "type": "array",
+                "description": "案件特殊點，呈現本案中最具代表性、特殊性或分析價值的語意特徵。每案生成5至10句短句（每句約20-40字），每句必須能獨立閱讀，不依賴上下文。可包含法律、程序、證據或結構特徵，例如同日雙金流或程序特例。內容不是原句照抄，而是根據全篇判決自由生成、濃縮、重組的描述句。",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "required": ["case_fact_summary", "defendants", "case_highlights"]
+    }
+}

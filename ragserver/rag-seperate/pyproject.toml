@@ -1,0 +1,20 @@
+[project]
+name = "embedding"
+version = "0.1.0"
+description = "Qdrant 搜尋 MCP 工具，支援 FastMCP 伺服器"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.13.1",
+    "qdrant-client>=1.15.0",
+    "fastembed>=0.7.0",
+    "jieba>=0.42.0",
+    "langchain-qdrant>=0.1.0",
+    "langchain-google-genai>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "numpy>=1.24.0",
+    "openai>=1.107.2",
+]
+
+[project.scripts]
+mcp-server = "run_mcp_server:main"

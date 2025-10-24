@@ -1,0 +1,132 @@
+{
+  "app": {
+    "title": "AI Chat Interface"
+  },
+  "sidebar": {
+    "title": "Chat History",
+    "newConversation": "New Chat",
+    "userSettings": "User Settings",
+    "conversations": {
+      "yesterday": "Yesterday's Discussion",
+      "aiPrompt": "AI Generated Prompt",
+      "settingsIssue": "Settings Issue",
+      "newConversation": "New Conversation"
+    },
+    "userMenu": {
+      "myFiles": "My Files",
+      "helpFaq": "Help & FAQ",
+      "settings": "Settings",
+      "logout": "Logout"
+    }
+  },
+  "chat": {
+    "newConversation": "New Conversation",
+    "inputPlaceholder": "Enter your message...",
+    "userMessage": "Please generate a prompt",
+    "assistantResponse": "Based on your request, I have generated the following prompt. This prompt can help you better interact with AI and get more accurate and useful responses. You can adjust and modify it according to your specific needs.",
+    "actions": {
+      "copy": "Copy",
+      "regenerate": "Regenerate",
+      "edit": "Edit",
+      "share": "Share", 
+      "delete": "Delete",
+      "rate": "Rate",
+      "more": "More",
+      "translate": "Translate",
+      "save": "Save",
+      "report": "Report"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "theme": "Theme",
+    "language": "Language",
+    "display": "Display",
+    "system": "System",
+    "privacy": "Privacy",
+    "account": "Account",
+    "others": "Others",
+    "tabs": {
+      "basic": "Basic",
+      "advanced": "Advanced",
+      "appearance": "Appearance",
+      "colors": "Colors",
+      "layout": "Layout",
+      "formatting": "Formatting"
+    },
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "languages": {
+      "zhTW": "Traditional Chinese",
+      "en": "English"
+    },
+    "toggles": {
+      "markdownFormatting": "Markdown Formatting",
+      "markdownFormattingDesc": "Display responses in Markdown format",
+      "instantPreview": "Instant Preview",
+      "instantPreviewDesc": "Instant preview of input Markdown content",
+      "showBorder": "Show Border",
+      "showBorderDesc": "Show borders for responses"
+    },
+    "saveButton": "Save",
+    "close": "Close"
+  },
+  "auth": {
+    "login": {
+      "title": "AI Chat Assistant",
+      "subtitle": "Welcome back, please sign in to your account",
+      "email": "Email",
+      "emailPlaceholder": "Enter your email",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "remember": "Remember me",
+      "forgot": "Forgot password?",
+      "submit": "Sign In",
+      "or": "or",
+      "google": "Sign in with Google",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign Up"
+    },
+    "register": {
+      "title": "Create New Account",
+      "subtitle": "Join us and start your AI assistant journey",
+      "name": "Name",
+      "namePlaceholder": "Enter your name",
+      "email": "Email",
+      "emailPlaceholder": "Enter your email",
+      "password": "Password",
+      "passwordPlaceholder": "Enter password (at least 6 characters)",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Re-enter your password",
+      "terms": "I agree to the",
+      "termsLink": "Terms of Service",
+      "and": "and",
+      "privacyLink": "Privacy Policy",
+      "submit": "Create Account",
+      "or": "or",
+      "google": "Sign up with Google",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign In",
+      "errors": {
+        "nameRequired": "Name is required",
+        "emailRequired": "Email is required",
+        "emailInvalid": "Please enter a valid email address",
+        "passwordRequired": "Password is required",
+        "passwordLength": "Password must be at least 6 characters",
+        "passwordMismatch": "Passwords do not match"
+      }
+    }
+  },
+  "footer": {
+    "about": "About Us",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "support": "Support",
+    "rights": "All rights reserved",
+    "powered": "Service online"
+  }
+}

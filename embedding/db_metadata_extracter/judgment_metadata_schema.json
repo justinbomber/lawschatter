@@ -1,0 +1,404 @@
+{
+  "case_type": "judgment_analysis",
+  "case_name": "判決書分析",
+  "description": "判決書結構化分析配置",
+  "schema_file": "judgment_analysis_schema.md",
+  "json_schema": {
+    "$schema": "https://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "defendants": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "defendant_name": {
+              "type": "string",
+              "description": "被告姓名"
+            },
+            "has_defense_attorney": {
+              "type": "boolean",
+              "description": "被告是否有選任辯護人"
+            },
+            "defense_attorney_name": {
+              "type": "string",
+              "description": "辯護人名稱（若 has_defense_attorney 為 true 時填寫，否則填空字串）"
+            },
+            "indictment_changed": {
+              "type": "boolean",
+              "description": "是否變更起訴法條（若同一條文但項次不同，仍視為變更）"
+            },
+            "original_indictment_articles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "原本起訴法條（若 indictment_changed 為 true 時填寫，有幾條填幾條）"
+            },
+            "changed_indictment_articles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "變更起訴法條（若 indictment_changed 為 true 時填寫，有幾條填幾條）"
+            },
+            "has_new_old_law_issue": {
+              "type": "boolean",
+              "description": "本件是否有新舊法適用的問題"
+            },
+            "new_old_law_disputed_article": {
+              "type": "string",
+              "description": "新舊法爭議的法條（若 has_new_old_law_issue 為 true 時填寫）"
+            },
+            "has_contradictory_statements": {
+              "type": "boolean",
+              "description": "是否有審理中與偵查中就核心事實或主要辯解內容出現矛盾、否認、或重大變更之陳述"
+            },
+            "confession_status": {
+              "type": "string",
+              "enum": [
+                "完全認罪",
+                "完全否認",
+                "部分"
+              ],
+              "description": "是否在本次審理中認罪"
+            },
+            "is_full_acquittal": {
+              "type": "boolean",
+              "description": "本件是否為全部無罪判決"
+            },
+            "is_acquittal_due_to_insufficient_evidence": {
+              "type": "boolean",
+              "description": "是否因為罪證不足而獲得全部無罪判決（若 is_full_acquittal 為 true 時填寫）"
+            },
+            "is_other_verdict": {
+              "type": "boolean",
+              "description": "本件是否為無罪、有罪以外的判決結果"
+            },
+            "is_conviction": {
+              "type": "boolean",
+              "description": "本件是否為有罪判決"
+            },
+            "crime_list": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "本次罪名清單（若 is_conviction 為 true 時填寫，例如：「三人以上共同詐欺取財罪」、「洗錢未遂罪」，關鍵字是 XXX 罪）"
+            },
+            "violated_law_articles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "所違反的法律條文（若 is_conviction 為 true 時填寫，列出具體法條與條次，關鍵字 XXX 條 XXX 項）"
+            },
+            "is_fixed_term_imprisonment": {
+              "type": "boolean",
+              "description": "本件是否為有期徒刑"
+            },
+            "fixed_term_years": {
+              "type": "integer",
+              "description": "有期徒刑年數（若 is_fixed_term_imprisonment 為 true 時填寫，否則填 0）"
+            },
+            "fixed_term_months": {
+              "type": "integer",
+              "description": "有期徒刑月數（若 is_fixed_term_imprisonment 為 true 時填寫，否則填 0）"
+            },
+            "is_life_imprisonment": {
+              "type": "boolean",
+              "description": "本件是否為無期徒刑"
+            },
+            "is_death_penalty": {
+              "type": "boolean",
+              "description": "本件是否為死刑"
+            },
+            "is_detention": {
+              "type": "boolean",
+              "description": "本件是否為拘役"
+            },
+            "detention_days": {
+              "type": "integer",
+              "description": "拘役天數（若 is_detention 為 true 時填寫，否則填 0）"
+            },
+            "has_concurrent_fine": {
+              "type": "boolean",
+              "description": "本件是否併科罰金"
+            },
+            "fine_amount": {
+              "type": "integer",
+              "description": "罰金金額（新臺幣，若 has_concurrent_fine 為 true 時填寫，否則填 0）"
+            },
+            "may_convert_to_fine": {
+              "type": "boolean",
+              "description": "本件是否得易科罰金（易科罰金不需要折算率）"
+            },
+            "has_probation": {
+              "type": "boolean",
+              "description": "本件是否給予緩刑"
+            },
+            "probation_period": {
+              "type": "string",
+              "description": "給予緩刑之期間（若 has_probation 為 true 時填寫，例如：「2年」、「3年6月」）"
+            },
+            "has_mitigation_articles": {
+              "type": "boolean",
+              "description": "本件是否有適用減刑的條文"
+            },
+            "mitigation_articles": {
+              "type": "string",
+              "description": "適用減刑的條文為（若 has_mitigation_articles 為 true 時填寫）"
+            },
+            "has_settlement": {
+              "type": "boolean",
+              "description": "本件是否與被害人或告訴人和解"
+            },
+            "settlement_amount": {
+              "type": "integer",
+              "description": "和解之總金額（新臺幣，若 has_settlement 為 true 時填寫，否則填 0）"
+            },
+            "is_settlement_fulfilled": {
+              "type": "boolean",
+              "description": "法院是否認定和解已經履行（若 has_settlement 為 true 時填寫）"
+            },
+            "is_settlement_installment": {
+              "type": "boolean",
+              "description": "本件和解是否分期（若 has_settlement 為 true 時填寫）"
+            },
+            "has_witnesses": {
+              "type": "boolean",
+              "description": "本件是否有證人（被告以外之人，包含共同被告）"
+            },
+            "witness_testified_in_investigation": {
+              "type": "boolean",
+              "description": "證人是否有在偵查中作證（若 has_witnesses 為 true 時填寫）"
+            },
+            "witness_testified_in_trial": {
+              "type": "boolean",
+              "description": "證人是否有在審判中作證（若 has_witnesses 為 true 時填寫）"
+            },
+            "has_seized_items": {
+              "type": "boolean",
+              "description": "本件是否有遭扣押物品"
+            },
+            "seized_items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "本件遭扣押物品（若 has_seized_items 為 true 時填寫）"
+            },
+            "has_confiscated_items": {
+              "type": "boolean",
+              "description": "本件是否遭沒收物品"
+            },
+            "confiscated_items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "本件遭沒收物品（若 has_confiscated_items 為 true 時填寫）"
+            },
+            "is_continuous_offense": {
+              "type": "string",
+              "enum": [
+                "是",
+                "否",
+                "未提及"
+              ],
+              "description": "本件被告是否屬於接續犯"
+            },
+            "is_first_instance": {
+              "type": "boolean",
+              "description": "是否為一審判決"
+            },
+            "is_second_instance": {
+              "type": "boolean",
+              "description": "是否為二審判決"
+            },
+            "is_third_instance": {
+              "type": "boolean",
+              "description": "是否為三審判決"
+            },
+            "has_previous_instance": {
+              "type": "boolean",
+              "description": "是否有原審（前審）判決（是否為上訴案件）"
+            },
+            "is_reversed_and_remanded": {
+              "type": "boolean",
+              "description": "是否撤銷改判（若 has_previous_instance 為 true 時填寫）"
+            },
+            "is_sentence_reduced": {
+              "type": "boolean",
+              "description": "是否減輕量刑（若 is_reversed_and_remanded 為 true 時填寫）"
+            },
+            "is_sentence_increased": {
+              "type": "boolean",
+              "description": "是否加重量刑（若 is_reversed_and_remanded 為 true 時填寫）"
+            },
+            "is_law_article_changed_from_previous": {
+              "type": "boolean",
+              "description": "是否變更原審（前審）適用法條（若 has_previous_instance 為 true 時填寫）"
+            },
+            "changed_law_articles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "變更法條為（若 is_law_article_changed_from_previous 為 true 時填寫，有幾條填幾條）"
+            },
+            "previous_instance_confession_status": {
+              "type": "string",
+              "enum": [
+                "完全認罪",
+                "完全否認",
+                "部分",
+                "不適用"
+              ],
+              "description": "原審（前審）是否有認罪（若 has_previous_instance 為 true 時填寫）"
+            },
+            "current_instance_confession_status": {
+              "type": "string",
+              "enum": [
+                "完全認罪",
+                "完全否認",
+                "部分",
+                "不適用"
+              ],
+              "description": "本件（上訴案件）是否有認罪（若 has_previous_instance 為 true 時填寫）"
+            },
+            "has_inconsistent_statements_with_previous": {
+              "type": "boolean",
+              "description": "是否有與原審答辯或主要陳述內容不一致之情形（若 has_previous_instance 為 true 時填寫）"
+            },
+            "statement_difference_description": {
+              "type": "string",
+              "description": "若有，請以一句話描述前後陳述的主要差異（若 has_inconsistent_statements_with_previous 為 true 時填寫）"
+            }
+          },
+          "required": [
+            "defendant_name",
+            "has_defense_attorney",
+            "defense_attorney_name",
+            "indictment_changed",
+            "original_indictment_articles",
+            "changed_indictment_articles",
+            "has_new_old_law_issue",
+            "new_old_law_disputed_article",
+            "has_contradictory_statements",
+            "confession_status",
+            "is_full_acquittal",
+            "is_acquittal_due_to_insufficient_evidence",
+            "is_other_verdict",
+            "is_conviction",
+            "crime_list",
+            "violated_law_articles",
+            "is_fixed_term_imprisonment",
+            "fixed_term_years",
+            "fixed_term_months",
+            "is_life_imprisonment",
+            "is_death_penalty",
+            "is_detention",
+            "detention_days",
+            "has_concurrent_fine",
+            "fine_amount",
+            "may_convert_to_fine",
+            "has_probation",
+            "probation_period",
+            "has_mitigation_articles",
+            "mitigation_articles",
+            "has_settlement",
+            "settlement_amount",
+            "is_settlement_fulfilled",
+            "is_settlement_installment",
+            "has_witnesses",
+            "witness_testified_in_investigation",
+            "witness_testified_in_trial",
+            "has_seized_items",
+            "seized_items",
+            "has_confiscated_items",
+            "confiscated_items",
+            "is_continuous_offense",
+            "is_first_instance",
+            "is_second_instance",
+            "is_third_instance",
+            "has_previous_instance",
+            "is_reversed_and_remanded",
+            "is_sentence_reduced",
+            "is_sentence_increased",
+            "is_law_article_changed_from_previous",
+            "changed_law_articles",
+            "previous_instance_confession_status",
+            "current_instance_confession_status",
+            "has_inconsistent_statements_with_previous",
+            "statement_difference_description"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "case_metadata": {
+        "type": "object",
+        "properties": {
+          "first_instance": {
+            "type": "boolean",
+            "description": "是否為地方法院判決"
+          },
+          "second_instance": {
+            "type": "boolean",
+            "description": "是否為高等法院判決"
+          },
+          "third_instance": {
+            "type": "boolean",
+            "description": "是否為最高法院判決"
+          },
+          "case_type": {
+            "type": "string",
+            "enum": [
+              "刑法",
+              "民法",
+              "行政法"
+            ],
+            "description": "案件類型，只能為：刑法，民法，行政法其中一種"
+          },
+          "jtitle_type": {
+            "type": "string",
+            "enum": [
+              "詐欺",
+              "毒品",
+              "竊盜",
+              "侵占",
+              "妨害性自主",
+              "傷害",
+              "公共危險",
+              "槍砲彈藥刀械",
+              "偽造文書",
+              "其他刑事",
+              "債務給付類",
+              "侵權行為／損害賠償類",
+              "婚姻家庭類",
+              "物權類",
+              "公司／商事類",
+              "勞資爭議類",
+              "保險類",
+              "其他民事"
+            ],
+            "description": "刑事 1. 詐欺案件  (詐欺、洗錢)2. 毒品案件  (毒品)3. 竊盜、侵占案件  (竊盜、侵占)4. 妨害性自主案件 (兒童及少年性剝削、兒少性剝削、妨害性自主、猥褻、性侵害、性騷擞)5. 傷害案件 (傷害、過失傷害)6. 公共危險 (公共危險、肇事逃逸、肇事)7. 槍砲彈藥刀械案件(槍砲、彈藥)8. 偽造文書案件(偽造、行使偽造)9. 其他刑事。民事1. 債務給付類（借款、買賣價金、租金、不當得利、給付）2. 侵權行為／損害賠償類（車禍、醫療糾紛、一般侵權）3. 婚姻家庭類（離婚、扶養、親子、繼承、親權）4. 物權類（所有權返還、共有物分割、地上權、抵押權）5. 公司／商事類（股東會決議效力、公司解散、票據、本票）6. 勞資爭議類（工資、加班費、解僱、不當勞動行為、）7. 保險類（人壽保險、傷害保險、火險、車險、保險）8. 其他民事"
+          }
+        },
+        "required": [
+          "first_instance",
+          "second_instance",
+          "third_instance",
+          "case_type",
+          "jtitle_type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "defendants",
+      "case_metadata"
+    ]
+  }
+}
