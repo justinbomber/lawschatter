@@ -142,6 +142,7 @@ def process_single_jid(jid, jdate):
     logger.info(f"Successfully processed and inserted summary for jid: {jid}")
     return True
 
+# TODO: 完成提取邏輯優化
 def main():
     total_processed = 0
     for jdate in fetch_all_jdates_desc():

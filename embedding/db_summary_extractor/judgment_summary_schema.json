@@ -10,7 +10,7 @@
         "properties": {
             "case_fact_summary": {
                 "type": "string",
-                "description": "全案300字內事實概要，無法律評價。提供整體可閱讀的案件輪廓，描述被害人、主要行為流程、整體金流脈絡。"
+                "description": "全案300字內事實概要，無法律評價。提供整體可閱讀的案件輪廓，描述被害人、主要行為流程、整體案件脈絡。"
             },
             "defendants": {
                 "type": "array",

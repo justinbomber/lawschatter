@@ -135,9 +135,9 @@ def main():
             if doc_count:
                 total_jid_count += 1
         
-        if total_date_count >= 10:
-            print(f"已達到處理上限，停止處理")
-            break
+        # if total_date_count >= 10:
+        #     print(f"已達到處理上限，停止處理")
+        #     break
     
     print(f"處理完成: 共處理 {total_date_count} 個日期, {total_jid_count} 個 jids")
 
