@@ -60,7 +60,7 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
   const models = [
     { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI' },
     { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI' },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI' },
+    { id: 'gpt-5', name: 'gpt-5', provider: 'OpenAI' },
     { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI' }
   ];
 

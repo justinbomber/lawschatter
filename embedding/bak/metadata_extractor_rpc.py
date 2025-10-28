@@ -51,7 +51,7 @@ def process_single_jid(jid, jdate):
     )
 
     resp = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-5",
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"}
     )

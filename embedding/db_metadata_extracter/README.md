@@ -1,160 +1,181 @@
-# 判決書 Metadata 提取器（最終版）
+# 判決書 Metadata 提取器（Clean Architecture 版本）
 
-此模組用於從判決書中提取 Metadata，並寫入 Supabase 中的 `lawschatter.judgment_metadata`。本版本重點：
+此模組用於從判決書中提取 Metadata，並寫入 Supabase 中的 `lawschatter.judgment_metadata`。
 
-- 從「最新日期」一路處理到「較舊日期」（近到遠）。
-- 程式若中斷，重新啟動會自動接續未完成的工作（依賴資料庫狀態，無需額外狀態表）。
-- 符合 Fail Fast 原則：不做重試、不做例外攔截，讓錯誤直接浮出並以資料狀態支援續跑。
+## 架構特色
+
+本專案採用 **Clean Architecture** 設計，具備以下特點：
+
+- ✅ **明確的分層與邊界**: Domain / Application / Infrastructure / Presentation
+- ✅ **穩定的抽象介面**: 透過介面定義依賴，降低替換成本
+- ✅ **高度模組化**: 每個模組單一職責，易於維護與擴充
+- ✅ **依賴反轉**: 高層模組不依賴低層實作，皆依賴抽象
+- ✅ **Fail Fast**: 無 try-catch，錯誤直接浮現便於偵錯
+
+詳細架構說明請參考 [ARCHITECTURE.md](./ARCHITECTURE.md)
+
+## 專案結構
+
+```
+db_metadata_extracter/
+├── domain/                    # 領域層（核心業務邏輯與抽象）
+│   ├── entities.py           # 業務實體
+│   ├── repositories.py       # Repository 介面
+│   └── services.py           # 領域服務介面
+├── application/              # 應用層（用例與流程編排）
+│   └── use_cases.py          # 業務用例
+├── infrastructure/           # 基礎設施層（外部服務實作）
+│   ├── database.py           # Supabase 資料庫實作
+│   ├── ai_service.py         # OpenAI 服務實作
+│   ├── schema_loader.py      # Schema 載入器
+│   └── filter_service.py     # 過濾服務
+├── presentation/             # 表現層（使用者介面）
+│   └── cli.py                # CLI 介面
+├── config.py                 # 配置管理
+├── main.py                   # 主程式入口
+├── ARCHITECTURE.md           # 架構文件
+├── README.md                 # 本檔案
+├── requirements.txt          # 依賴套件
+├── judgment_metadata_schema.json  # Metadata Schema
+└── create_rpc_function.sql   # RPC 函數 SQL
+```
 
 ## 資料來源與條件
 
-- 連線：`https://supalaw.mooo.com/`，Schema：`lawschatter`
-- 一次處理單位：以天為單位（`jdate`）。
-- 來源表：`lawschatter.main_judgments`
-- 寫入表：`lawschatter.judgment_metadata`
-- 過濾條件：僅處理 `jfull` 屬於以下任一字串的資料：`詐欺等`、`詐欺`、`洗錢防制法等`、`洗錢防制法`
-- 僅處理「只存在於 `main_judgments`，且不存在於 `judgment_metadata` 與 `judgment_summary`」之 `jid`
+- **連線**: `https://supalaw.mooo.com/`
+- **Schema**: `lawschatter`
+- **處理單位**: 以天為單位（`jdate`）
+- **來源表**: `lawschatter.main_judgments`
+- **寫入表**: `lawschatter.judgment_metadata`
+- **過濾條件**: 僅處理 `jtitle` 為以下任一的資料：
+  - `詐欺等`
+  - `詐欺`
+  - `洗錢防制法等`
+  - `洗錢防制法`
+- **過濾邏輯**: 僅處理不存在於 `judgment_metadata` 的 `jid`
 
-## 運作流程（近到遠、可中斷續跑）
+## 運作流程
 
-1. 擷取 `main_judgments` 的所有獨特 `jdate`，以遞減排序（新到舊）。
+1. 擷取 `main_judgments` 的所有獨特 `jdate`，以遞減排序（新到舊）
 2. 逐日處理：
-   - 撈出當日符合 `jfull` 條件的 `main_jids`。
-   - 同步撈出該日已存在於 `judgment_metadata` 與 `judgment_summary` 的 `jid` 集合。
-   - 以差集取得「未處理 `jid`」。
-3. 逐 `jid`：
-   - 讀取該 `jid` 的完整判決資料。
-   - 依 `judgment_metadata_schema.json` 呼叫 OpenAI（`gpt-4o`）產生結構化 metadata。
-   - 立即插入 `judgment_metadata`（含 `jid`、`jdate`、`metadata`）。
-4. 若程式中斷：
-   - 重新啟動後重跑步驟 1～3；已插入的 `jid` 會被差集邏輯自動略過，只處理剩餘未完成者。
-5. 結束條件：所有 `jdate` 均無未處理 `jid` 即結束。
+   - 撈出當日符合 `jtitle` 條件的 `jid`
+   - 撈出已存在於 `judgment_metadata` 的 `jid`
+   - 取得未處理的 `jid`（差集）
+3. 逐 `jid` 處理：
+   - 讀取判決資料
+   - 過濾裁定案件（前 20 字包含「裁定」）
+   - 呼叫 OpenAI 產生結構化 metadata
+   - 插入 `judgment_metadata`
+4. 程式中斷後重新啟動會自動接續處理
 
-## 子查詢限制的兩條路
+## 環境變數設定
 
-- 方法 A（預設）：分步查詢以集合差集完成過濾，不使用資料庫子查詢。
-- 方法 B（可選）：建立 Postgres RPC，於後端以 `NOT EXISTS` 完成過濾，前端透過 PostgREST `/rest/v1/rpc` 呼叫。
+建立 `.env` 檔案並設定以下變數：
 
-## 參考實作（Python，Fail Fast／最小必要碼）
+```env
+# 必填
+SUPABASE_KEY=your_supabase_key
+OPENAI_API_KEY=your_openai_api_key
 
-```python
-import os
-import json
-from supabase import create_client, Client
-from openai import OpenAI
-
-# 環境變數
-SUPABASE_URL = "https://supalaw.mooo.com/"
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-SCHEMA_FILE = "judgment_metadata_schema.json"
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
-
-with open(SCHEMA_FILE, "r") as f:
-    metadata_schema = json.load(f)
-
-TARGET_JFULL = ["詐欺等", "詐欺", "洗錢防制法等", "洗錢防制法"]
-
-def fetch_all_jdates_desc():
-    resp = supabase.table("main_judgments").select("jdate").order("jdate", desc=True).execute()
-    return sorted({row["jdate"] for row in resp.data}, reverse=True)
-
-def fetch_unprocessed_jids_for_date(jdate):
-    main_resp = (
-        supabase
-        .table("main_judgments")
-        .select("jid")
-        .eq("jdate", jdate)
-        .in_("jfull", TARGET_JFULL)
-        .execute()
-    )
-    main_jids = {row["jid"] for row in main_resp.data}
-
-    meta_resp = supabase.table("judgment_metadata").select("jid").eq("jdate", jdate).execute()
-    meta_jids = {row["jid"] for row in meta_resp.data}
-
-    sum_resp = supabase.table("judgment_summary").select("jid").eq("jdate", jdate).execute()
-    sum_jids = {row["jid"] for row in sum_resp.data}
-
-    return list(main_jids - meta_jids - sum_jids)
-
-def process_single_jid(jid, jdate):
-    judgment = supabase.table("main_judgments").select("*").eq("jid", jid).single().execute().data
-    prompt = (
-        "Extract metadata from this judgment based on the schema: "
-        + json.dumps(metadata_schema, ensure_ascii=False)
-        + "\nJudgment: "
-        + json.dumps(judgment, ensure_ascii=False)
-    )
-    resp = openai_client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-    )
-    metadata = json.loads(resp.choices[0].message.content)
-    supabase.table("judgment_metadata").insert({
-        "jid": jid,
-        "jdate": jdate,
-        "metadata": metadata,
-    }).execute()
-
-def main():
-    for jdate in fetch_all_jdates_desc():
-        jids = fetch_unprocessed_jids_for_date(jdate)
-        if not jids:
-            continue
-        for jid in jids:
-            process_single_jid(jid, jdate)
-
-if __name__ == "__main__":
-    main()
+# 可選（有預設值）
+SUPABASE_URL=https://supalaw.mooo.com/
+SCHEMA_NAME=lawschatter
+AI_MODEL=gpt-5
+SCHEMA_FILE=judgment_metadata_schema.json
+INCLUDE_ADJUDICATE=false
 ```
 
-說明：
-- 無例外攔截、無重試，讓問題直接拋出；重新啟動後透過差集自動續跑。
-- 若 `judgment_metadata` 無 `jdate` 欄位，請改以 `jid` 查已處理清單再取差集。
+## 安裝與執行
 
-##（可選）RPC 方案：把過濾邏輯下放到資料庫
-
-SQL：
-
-```sql
-CREATE OR REPLACE FUNCTION lawschatter.get_unprocessed_jids(p_jdate text)
-RETURNS SETOF text AS $$
-  SELECT mj.jid
-  FROM lawschatter.main_judgments mj
-  WHERE mj.jdate = p_jdate
-    AND mj.jfull IN ('詐欺等','詐欺','洗錢防制法等','洗錢防制法')
-    AND NOT EXISTS (
-      SELECT 1 FROM lawschatter.judgment_metadata jm WHERE jm.jid = mj.jid
-    )
-    AND NOT EXISTS (
-      SELECT 1 FROM lawschatter.judgment_summary js WHERE js.jid = mj.jid
-    );
-$$ LANGUAGE sql STABLE;
-```
-
-呼叫（PostgREST）：
+### 1. 安裝依賴
 
 ```bash
-curl -X POST "$SUPABASE_URL/rest/v1/rpc/get_unprocessed_jids" \
-  -H "apikey: $SUPABASE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"p_jdate": "20250101"}' | cat
+pip install -r requirements.txt
 ```
 
-Python 亦可使用 `supabase-py` 的 `rpc("get_unprocessed_jids", {"p_jdate": jdate})` 呼叫。
+### 2. 設定環境變數
 
-## 環境變數
+建立 `.env` 檔案並填入必要的 API Keys
 
-- `SUPABASE_KEY`
-- `OPENAI_API_KEY`
-- `SCHEMA_FILE`（預設：`judgment_metadata_schema.json`）
+### 3. 執行程式
 
-## 參考
+```bash
+cd embedding/db_metadata_extracter
+python main.py
+```
 
-- Supabase REST API（PostgREST）：[連結](https://supabase.com/docs/guides/api)
-- Supabase Database Functions（RPC）：[連結](https://supabase.com/docs/guides/database/functions)
-- Supabase Python RPC 參考：[連結](https://supabase.com/docs/reference/python/rpc)
+## 如何擴充
+
+### 替換資料庫
+
+實作 `domain/repositories.py` 中的介面，並在 `presentation/cli.py` 替換實作：
+
+```python
+from infrastructure.postgres_database import PostgresJudgmentRepository
+
+judgment_repo = PostgresJudgmentRepository(connection_params)
+```
+
+### 替換 AI 服務
+
+實作 `domain/services.py` 中的 `MetadataExtractor` 介面：
+
+```python
+from infrastructure.claude_service import ClaudeMetadataExtractor
+
+extractor = ClaudeMetadataExtractor(api_key, model)
+```
+
+### 新增過濾規則
+
+實作 `domain/services.py` 中的 `JudgmentFilter` 介面：
+
+```python
+class CustomFilter(JudgmentFilter):
+    def should_ignore(self, judgment: JudgmentRecord) -> bool:
+        # 自訂過濾邏輯
+        return False
+```
+
+詳細擴充指南請參考 [ARCHITECTURE.md](./ARCHITECTURE.md)
+
+## Fail Fast 原則
+
+本專案遵循 Fail Fast 原則：
+
+- ❌ 不使用 try-catch 處理例外
+- ✅ 讓錯誤直接拋出並顯示完整堆疊追蹤
+- ✅ 透過資料庫狀態支援中斷後續跑
+- ✅ 問題立即顯現，便於偵錯與修正
+
+## 日誌輸出
+
+日誌格式：`%(asctime)s | %(levelname)s | %(message)s`
+
+範例輸出：
+```
+2025-01-15 10:30:00 | INFO | 開始執行 Metadata 提取流程
+2025-01-15 10:30:01 | INFO | 找到 365 個獨特日期
+2025-01-15 10:30:02 | INFO | 處理日期: 2024-12-31
+2025-01-15 10:30:03 | INFO | 找到 150 筆符合條件的判決
+2025-01-15 10:30:04 | INFO | 找到 45 筆未處理的判決
+2025-01-15 10:30:05 | INFO | 處理判決: JID123456
+...
+```
+
+## 參考資料
+
+- [Clean Architecture 概念](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+- [Supabase Python Client](https://supabase.com/docs/reference/python/introduction)
+- [OpenAI Python SDK](https://github.com/openai/openai-python)
+
+## 版本歷史
+
+### v2.0.0 (Clean Architecture)
+- 重構為 Clean Architecture 架構
+- 明確分層：Domain / Application / Infrastructure / Presentation
+- 穩定抽象介面，降低替換成本
+- 移除所有 try-catch，遵循 Fail Fast 原則
+
+### v1.0.0 (Original)
+- 原始版本，單一檔案實作

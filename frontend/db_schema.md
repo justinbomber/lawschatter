@@ -8,7 +8,7 @@
 - **使用者認證**: 登入、登出、顯示使用者資訊。
 - **對話管理**: 建立、選取、列出歷史對話。
 - **即時通訊**: 使用者與 AI 之間的問答互動。
-- **AI 模型選擇**: 允許使用者切換不同的 AI 模型 (例如 GPT-4, GPT-4o)。
+- **AI 模型選擇**: 允許使用者切換不同的 AI 模型 (例如 GPT-4, gpt-5)。
 - **RAG (Retrieval-Augmented Generation) 整合**: 連接外部法律資料庫，根據使用者設定的領域和時間範圍進行檢索，以增強回答的準確性。
 - **訊息回饋**: 使用者可以對 AI 的回答進行評價 (讚/倒讚)。
 
@@ -56,7 +56,7 @@
 - `POST /api/conversations/:conversationId/messages`
   - **功能**: 在特定對話中傳送新訊息，並觸發 AI 回應。這是與聊天機器人互動的核心端點。
   - **需要驗證**: 是
-  - **請求 Body**: `{ "content": "使用者輸入的訊息", "model": "gpt-4o", "rag_settings": { ... } }`
+  - **請求 Body**: `{ "content": "使用者輸入的訊息", "model": "gpt-5", "rag_settings": { ... } }`
   - **回應**: `Stream` 或 `JSON` 形式的 AI 回應訊息。
 
 - `POST /api/messages/:messageId/feedback`
