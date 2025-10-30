@@ -1,218 +1,151 @@
 # Qdrant 搜尋 API 服務
 
-這是一個完整的 Qdrant 向量資料庫搜尋 API 服務，提供混合嵌入搜尋的 REST API 介面。
+## 專案架構 (Clean Architecture V2.0)
 
-## 功能特色
+本專案採用嚴格的 Clean Architecture 設計，分為以下六個層級：
 
-- 🔍 **多種搜尋模式**: 支援語意搜尋 (dense)、關鍵字搜尋 (sparse) 和混合搜尋 (hybrid)
-- 🎯 **智慧過濾**: 自動從查詢文字中提取結構化過濾條件
-- 📊 **集合管理**: 列出集合、取得詳細資訊
-- 🛠️ **REST API**: 提供完整的 REST API 介面
-- 🚀 **高性能**: 基於 FastAPI 的異步處理
+### 1. Config（配置層）- 最內層
+- `config/settings.py`: 統一配置管理，所有環境變數集中載入
 
-## 技術架構
+### 2. Entities（實體層）
+- `entities/models.py`: API 請求與回應模型
+- `entities/filters.py`: 法律判決過濾條件模型
 
-### Hybrid Embedding
-- **Google Gemini Dense Embedding** (gemini-embedding-001) with **3072** dimensions
-- **基於 Jieba tokenizer 的 BM25 Sparse Embedding**
-- **Qdrant 向量資料庫**
+### 3. Domain（領域層）- 抽象介面
+- `domain/interfaces.py`: 定義所有服務的抽象介面（ABC）
+  - `ISearchService`: 搜尋服務介面
+  - `IFilterService`: 過濾服務介面
+  - `IRerankService`: 重新排序服務介面
+  - `IEmbeddingProvider`: 嵌入提供者介面
+  - `IQdrantClient`: Qdrant 客戶端介面
 
-## 📂 專案結構
+### 4. Infrastructure（基礎設施層）
+- `infrastructure/qdrant_client_wrapper.py`: Qdrant 客戶端封裝（實作 IQdrantClient）
+- `infrastructure/tokenizer.py`: Jieba 法律文本分詞器
+- `infrastructure/embeddings/dense_embedding.py`: 語意向量嵌入（實作 IEmbeddingProvider）
+- `infrastructure/embeddings/sparse_embedding.py`: 稀疏向量（BM25）嵌入（實作 IEmbeddingProvider）
+
+### 5. Services（服務層）
+- `services/search_service.py`: 搜尋業務邏輯（實作 ISearchService）
+- `services/filter_service.py`: 過濾條件提取與轉換（實作 IFilterService）
+- `services/rerank_service.py`: 搜尋結果重新排序（實作 IRerankService）
+
+### 6. Controllers（控制器層）- 最外層
+- `controllers/search_controller.py`: API 端點處理
+- `controllers/api_router.py`: API 路由定義
+
+## 資料夾結構
 
 ```
-.
-├── 🔧 核心功能
-│   ├── main.py                    # FastAPI 應用程式主檔
-│   ├── qdrant_search.py           # Qdrant 搜尋功能
-│   ├── hybrid_embed.py            # 混合嵌入配置
-│   ├── zht_sparse_embed.py        # 中文 BM25 + Jieba tokenizer
-│   ├── law_tokenize.py            # Jieba Tokenizer
-│   └── filter_extractor.py        # 智慧過濾條件提取
-├── ⚙️ 配置檔案
-│   ├── pyproject.toml             # 專案配置
-│   └── .python-version            # Python 版本
-└── 🔤 資源檔案
-    ├── zh-t.txt                   # 中文停用詞表
-    └── dict.txt.big               # Jieba 辭典
+rag-seperate/
+├── config/               # 配置層（最內層）
+│   ├── __init__.py
+│   └── settings.py      # 統一配置管理
+├── entities/             # 實體層
+│   ├── __init__.py
+│   ├── models.py
+│   └── filters.py
+├── domain/              # 領域層（抽象介面）
+│   ├── __init__.py
+│   └── interfaces.py    # 所有抽象介面定義
+├── infrastructure/       # 基礎設施層
+│   ├── __init__.py
+│   ├── qdrant_client_wrapper.py
+│   ├── tokenizer.py
+│   └── embeddings/
+│       ├── __init__.py
+│       ├── dense_embedding.py
+│       └── sparse_embedding.py
+├── services/            # 服務層
+│   ├── __init__.py
+│   ├── search_service.py
+│   ├── filter_service.py
+│   └── rerank_service.py
+├── controllers/         # 控制器層（最外層）
+│   ├── __init__.py
+│   ├── search_controller.py
+│   └── api_router.py   # API 路由定義
+├── main.py             # 應用程式入口（依賴注入）
+├── requirements.txt
+├── pyproject.toml
+├── dict.txt.big       # Jieba 詞典
+└── zh-t.txt          # 中文停用詞
+
+[舊檔案保留]
+├── filter_extractor.py  # 已重構至 services/filter_service.py
+├── qdrant_search.py     # 已重構至 services/search_service.py
+├── rerank.py            # 已重構至 services/rerank_service.py
+├── law_tokenize.py      # 已重構至 infrastructure/tokenizer.py
+├── zht_sparse_embed.py  # 已重構至 infrastructure/embeddings/
+└── hybrid_embed.py      # 已重構至 infrastructure/embeddings/
 ```
 
-## ⚙️ 安裝需求
+## 環境變數設定
 
-### 1. Python 版本
-```bash
-Python 3.12+
-```
+請在專案根目錄建立 `.env` 檔案，設定以下環境變數：
 
-### 2. 安裝依賴
-```bash
-# 使用 uv (推薦)
-uv sync
-
-# 或使用 pip
-pip install -r requirements.txt
-```
-
-## 🔑 環境變數設定
-
-請在專案目錄建立 `.env` 檔案，內容如下：
-
+### 必要環境變數
 ```env
-GENAI_EMBEDDING_API_KEY=你的GoogleAPI金鑰
+# Qdrant 設定
 QDRANT_CLIENT=http://localhost:6333
-COLLECTION_NAME=law_docs
+COLLECTION_NAME=your_collection_name
+
+# OpenAI 設定
+OPENAI_API_KEY=sk-your-key
+OPENAI_MODEL=gpt-5
+
+# Google AI 設定
+GENAI_EMBEDDING_API_KEY=your-key
+GOOGLE_EMBEDDING_MODEL=gemini-embedding-001
+
+# API 服務設定
 API_HOST=0.0.0.0
 API_PORT=8000
+API_RELOAD=true
 ```
 
-## 🚀 使用方式
+### 可選環境變數
+```env
+# Cohere 設定（用於重新排序）
+COHERE_API_KEY=your-key
+COHERE_MODEL=rerank-v3.5
 
-### 1. 啟動 API 服務
+# 嵌入設定
+DENSE_VECTOR_NAME=dense
+SPARSE_VECTOR_NAME=bm25
+STOPWORDS_PATH=zh-t.txt
+```
+
+## 啟動服務
 
 ```bash
-# 方法 1: 直接執行
-uv run python main.py
-
-# 方法 2: 使用 uvicorn
-uv run uvicorn main:app --reload
-
-# 方法 3: 使用腳本命令
-uv run qdrant-api
+python main.py
 ```
 
-服務啟動後：
-- API 文件: http://localhost:8000/docs
-- 替代文件: http://localhost:8000/redoc
-- 健康檢查: http://localhost:8000/health
+## API 端點
 
-### 2. API 端點
+- `GET /`: 服務狀態檢查
+- `GET /health`: 健康檢查
+- `GET /collections`: 列出所有集合
+- `GET /collections/{collection}/info`: 取得集合資訊
+- `POST /search`: 執行搜尋
 
-#### POST /search
-主要搜尋端點，支援混合嵌入搜尋
+## 設計原則
 
-**請求範例:**
-```bash
-curl -X POST "http://localhost:8000/search" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "collection": "law_docs",
-    "query_text": "加班費計算標準",
-    "mode": "hybrid",
-    "limit": 10
-  }'
-```
+### Clean Architecture 核心準則
+- **依賴規則**: 依賴只能由外向內，內層不依賴外層
+- **穩定抽象**: 透過 Domain 層定義抽象介面（ABC）
+- **依賴注入**: 透過建構子注入所有依賴
+- **配置分離**: 所有配置透過 Config 層統一管理
 
-**請求參數:**
-- `collection` (必填): 集合名稱
-- `query_text` (必填): 搜尋查詢文字
-- `mode` (可選): 搜尋模式 (dense/sparse/hybrid，預設: hybrid)
-- `limit` (可選): 結果數量上限 (1-100，預設: 10)
-- `score_threshold` (可選): 最低分數閾值 (0-1)
+### 開發準則
+- **模組化設計**: 每個功能在獨立模組中
+- **單一職責**: 每個類別只負責一個功能
+- **快速失敗**: 不使用 try-catch，錯誤直接拋出
+- **最少日誌**: 只記錄關鍵資訊
+- **簡潔程式碼**: 只寫必要的程式碼
 
-#### GET /collections
-列出所有可用的集合
-
-**回應範例:**
-```json
-{
-  "collections": ["law_docs", "judgments"],
-  "count": 2
-}
-```
-
-#### GET /collections/{collection}/info
-取得指定集合的詳細資訊
-
-**回應範例:**
-```json
-{
-  "name": "law_docs",
-  "vectors_count": 3072,
-  "points_count": 15000,
-  "status": "green"
-}
-```
-
-#### GET /health
-健康檢查端點
-
-**回應範例:**
-```json
-{
-  "status": "healthy",
-  "qdrant_connection": "connected",
-  "collections_count": 3
-}
-```
-
-### 3. 錯誤回應
-
-當 API 調用失敗時，返回標準的錯誤格式：
-
-```json
-{
-  "detail": "搜尋執行錯誤: 集合不存在"
-}
-```
-
-## 進階功能
-
-### 智慧過濾條件提取
-
-API 會自動從查詢文字中提取結構化的過濾條件，例如：
-- 查詢 "最高法院 2024 年的民事案件" 會自動提取法院、年份、案類等條件
-- 支援複雜的法律條件識別（罪名、法條、刑期等）
-
-### 搜尋模式說明
-
-- **dense**: 純語意搜尋，適合理解文意和概念
-- **sparse**: 純關鍵字搜尋，適合精確匹配
-- **hybrid**: 混合模式，平衡語意和關鍵字的優勢
-
-## 注意事項
-
-- 需要 Qdrant 服務運行在指定的 URL
-- 所有請求和回應都使用 JSON 格式
-- 支援繁體中文的搜尋和結果顯示
-- 需要 Google API 金鑰用於 Gemini 嵌入
-- 建議在生產環境中設定適當的限流和認證
-
-## 錯誤處理
-
-- API 會返回適當的 HTTP 狀態碼
-- 錯誤訊息包含詳細的失敗原因
-- 所有端點都有完整的異常處理機制
-
-## 環境變數
-
-| 變數名稱 | 描述 | 預設值 |
-|---------|------|-------|
-| `QDRANT_CLIENT` | Qdrant 服務 URL | `http://localhost:6333` |
-| `API_HOST` | API 服務綁定地址 | `0.0.0.0` |
-| `API_PORT` | API 服務端口 | `8000` |
-| `GENAI_EMBEDDING_API_KEY` | Google Gemini API 金鑰 | 必填 |
-
-## 開發說明
-
-### 程式碼結構
-
-- `main.py`: FastAPI 應用程式主檔
-- `qdrant_search.py`: 核心搜尋功能
-- `filter_extractor.py`: 智慧過濾條件提取
-- `hybrid_embed.py`: 混合嵌入配置
-- `zht_sparse_embed.py`: 中文稀疏嵌入
-- `law_tokenize.py`: 法律專用分詞器
-
-### 測試 API
-
-```bash
-# 健康檢查
-curl http://localhost:8000/health
-
-# 列出集合
-curl http://localhost:8000/collections
-
-# 搜尋測試
-curl -X POST "http://localhost:8000/search" \
-  -H "Content-Type: application/json" \
-  -d '{"collection": "your_collection", "query_text": "測試查詢"}'
-```
+### 可替換性
+- **低替換成本**: 只需實作 Domain 介面，不影響其他層
+- **易於測試**: 可注入 Mock 物件進行單元測試
+- **明確契約**: 介面清楚定義行為預期
