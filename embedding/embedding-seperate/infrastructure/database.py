@@ -32,43 +32,16 @@ class SupabaseSummaryRepository(SummaryRepository):
         return unique_dates
     
     def get_unprocessed_jids_by_date(self, jdate: str) -> List[str]:
-        logger.info(f"擷取日期 {jdate} 未嵌入的判決 ID")
-        
-        main_resp = (
+        logger.info(f"透過 RPC 獲取所有未嵌入的判決 ID")
+        resp = (
             self.client
-            .schema(self.schema_name)
-            .table("main_judgments")
-            .select("jid")
-            .eq("jdate", jdate)
+            .rpc("get_unembedded_jids")
             .execute()
         )
-        main_jids = {row["jid"] for row in main_resp.data}
-        
-        meta_resp = (
-            self.client
-            .schema(self.schema_name)
-            .table("judgment_metadata")
-            .select("jid")
-            .eq("jdate", jdate)
-            .execute()
-        )
-        meta_jids = {row["jid"] for row in meta_resp.data}
-        
-        sum_resp = (
-            self.client
-            .schema(self.schema_name)
-            .table("judgment_summary")
-            .select("jid")
-            .eq("jdate", jdate)
-            .eq("embedded_1", False)
-            .execute()
-        )
-        sum_jids = {row["jid"] for row in sum_resp.data}
-        
-        unprocessed = list(main_jids & meta_jids & sum_jids)
-        logger.info(f"找到 {len(unprocessed)} 個未嵌入的判決")
-        
-        return unprocessed
+        result = resp.data if resp.data else []
+        jids = [row["jid"] for row in result]
+        logger.info(f"找到 {len(jids)} 個未嵌入的判決")
+        return jids
     
     def get_summaries_by_jid(self, jid: str) -> List[JudgmentSummary]:
         logger.info(f"擷取判決 {jid} 的 summary 記錄")

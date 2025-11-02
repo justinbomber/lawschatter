@@ -49,8 +49,7 @@ class CLI:
             vector_store=vector_store,
         )
         
-        total_dates, total_jids = use_case.execute()
+        use_case.execute()
         
-        logger.info(f"執行完成，處理 {total_dates} 個日期，{total_jids} 個判決")
-        return total_dates, total_jids
+        return 0, 0
 

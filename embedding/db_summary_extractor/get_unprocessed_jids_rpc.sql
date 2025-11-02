@@ -12,7 +12,7 @@ BEGIN
     RETURN QUERY
     SELECT DISTINCT
         m.jid,
-        m.jdate
+        m.jdate::TEXT
     FROM lawschatter.judgment_metadata m
     INNER JOIN lawschatter.main_judgments j ON m.jid = j.jid
     WHERE NOT EXISTS (
@@ -20,7 +20,7 @@ BEGIN
         FROM lawschatter.judgment_summary s
         WHERE s.jid = m.jid
     )
-    ORDER BY m.jdate DESC;
+    ORDER BY m.jdate::TEXT DESC;
 END;
 $$ LANGUAGE plpgsql;
 

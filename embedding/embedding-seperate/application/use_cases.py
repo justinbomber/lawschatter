@@ -1,5 +1,6 @@
 import logging
 import json
+import time
 from typing import List
 from ..domain import (
     SummaryRepository,
@@ -23,41 +24,25 @@ class EmbedDocumentsUseCase:
         self.metadata_repo = metadata_repo
         self.vector_store = vector_store
     
-    def execute(self) -> tuple[int, int]:
+    def execute(self) -> None:
         logger.info("開始執行文件嵌入流程")
         
-        total_date_count = 0
-        total_jid_count = 0
-        
-        dates = self.summary_repo.get_all_dates_desc()
-        logger.info(f"找到 {len(dates)} 個獨特日期")
-        
-        for jdate in dates:
-            processed_count = self._process_date(jdate)
-            if processed_count > 0:
-                total_date_count += 1
-                total_jid_count += processed_count
-        
-        logger.info(f"嵌入完成，處理 {total_date_count} 個日期，{total_jid_count} 個判決")
-        return total_date_count, total_jid_count
-    
-    def _process_date(self, jdate: str) -> int:
-        logger.info(f"處理日期: {jdate}")
-        
-        unprocessed_jids = self.summary_repo.get_unprocessed_jids_by_date(jdate)
-        
-        if not unprocessed_jids:
-            logger.info(f"日期 {jdate} 無待處理的判決")
-            return 0
-        
-        logger.info(f"找到 {len(unprocessed_jids)} 個待處理的判決")
-        
-        processed_count = 0
-        for jid in unprocessed_jids:
-            if self._process_jid(jid):
-                processed_count += 1
-        
-        return processed_count
+        while True:
+            unprocessed_jids = self.summary_repo.get_unprocessed_jids_by_date("")
+            
+            if not unprocessed_jids:
+                logger.info("沒有未嵌入的判決，等待 2 分鐘後再次掃描")
+                time.sleep(120)
+                continue
+            
+            logger.info(f"找到 {len(unprocessed_jids)} 個待處理的判決，開始處理")
+            
+            processed_count = 0
+            for jid in unprocessed_jids:
+                if self._process_jid(jid):
+                    processed_count += 1
+            
+            logger.info(f"本輪處理完成，處理了 {processed_count} 個判決")
     
     def _process_jid(self, jid: str) -> bool:
         logger.info(f"處理判決: {jid}")
