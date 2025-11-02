@@ -1,4 +1,5 @@
 import logging
+import httpx
 from supabase import create_client
 from openai import OpenAI
 from ..config import AppConfig
@@ -27,8 +28,14 @@ class CLI:
             self.config.database.supabase_key,
         )
         
+        # 配置 OpenAI 客戶端超時時間（10 分鐘）
+        timeout = httpx.Timeout(600.0, connect=60.0)
+        http_client = httpx.Client(timeout=timeout)
+        
         openai_client = OpenAI(
-            api_key=self.config.ai_service.openai_api_key
+            api_key=self.config.ai_service.openai_api_key,
+            http_client=http_client,
+            max_retries=0  # 禁用內建重試，使用我們自己的重試邏輯
         )
         
         judgment_repo = SupabaseJudgmentRepository(
@@ -43,7 +50,9 @@ class CLI:
         
         extractor = OpenAIMetadataExtractor(
             openai_client, 
-            self.config.ai_service.model
+            self.config.ai_service.model,
+            timeout=600,  # 10 分鐘超時
+            max_wait_time=300  # 最大等待時間 5 分鐘
         )
         
         filter_service = AdjudicateJudgmentFilter()
@@ -66,4 +75,3 @@ class CLI:
         
         logger.info(f"執行完成，總共處理 {total_processed} 筆判決")
         return total_processed
-
