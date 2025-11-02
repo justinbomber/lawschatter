@@ -48,6 +48,7 @@ class EmbeddingDocument:
             'case_type': metadata.case_type,
             'summary_type': summary.summary_type,
             'case_metadata': metadata.case_metadata,
+            'defendants': metadata.defendants,
         }
         
         if summary.defendent_name:
@@ -58,8 +59,12 @@ class EmbeddingDocument:
                     break
             
             if matching_defendant:
-                doc_metadata['defendant'] = matching_defendant
-                doc_metadata['defendant_name'] = summary.defendent_name
+                print("================================================")
+                print(summary.defendent_name)
+                print(summary.summary_type)
+                print(matching_defendant)
+                print("================================================")
+                doc_metadata['defendants'] = [matching_defendant]
         else:
             doc_metadata['defendants'] = metadata.defendants
         

@@ -34,4 +34,8 @@ class SummaryRepository(ABC):
     @abstractmethod
     def save_summary(self, summary: SummaryRecord) -> None:
         pass
+    
+    @abstractmethod
+    def get_unprocessed_jids(self) -> List[dict]:
+        pass
 

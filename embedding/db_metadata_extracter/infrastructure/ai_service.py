@@ -40,8 +40,8 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                     "schema": schema["json_schema"]
                 }
             },
-            timeout=300,
-            reasoning_effort="high"
+            timeout=180,
+            reasoning_effort="medium"
         )
         
         ai_metadata = json.loads(resp.choices[0].message.content)

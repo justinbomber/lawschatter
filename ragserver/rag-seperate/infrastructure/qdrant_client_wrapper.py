@@ -15,4 +15,7 @@ class QdrantClientWrapper(IQdrantClient):
     
     def get_collection(self, collection_name: str):
         return self.client.get_collection(collection_name)
+    
+    def scroll(self, **kwargs):
+        return self.client.scroll(**kwargs)
 

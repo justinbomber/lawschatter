@@ -99,7 +99,7 @@ class SupabaseSummaryRepository(SummaryRepository):
             .execute()
         )
         return list({row["jid"] for row in resp.data})
-    
+
     def save_summary(self, summary: SummaryRecord) -> None:
         logger.info(f"儲存 summary: {summary.jid} - {summary.summary_type}")
         record_data = {
@@ -111,4 +111,15 @@ class SupabaseSummaryRepository(SummaryRepository):
             "defendent_name": summary.defendent_name,
         }
         self.client.schema(self.schema_name).table("judgment_summary").insert(record_data).execute()
+    
+    def get_unprocessed_jids(self) -> List[dict]:
+        logger.info("透過 RPC 獲取所有未處理的判決 ID")
+        resp = (
+            self.client
+            .rpc("get_unprocessed_summary_jids")
+            .execute()
+        )
+        result = resp.data if resp.data else []
+        logger.info(f"找到 {len(result)} 筆未處理的判決")
+        return result
 

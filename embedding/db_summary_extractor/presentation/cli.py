@@ -73,8 +73,7 @@ class CLI:
             sleep_interval=self.config.process.sleep_interval,
         )
         
-        total_processed = use_case.execute()
+        use_case.execute()
         
-        logger.info(f"執行完成，總共處理 {total_processed} 筆判決")
-        return total_processed
+        return 0
 

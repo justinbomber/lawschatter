@@ -25,6 +25,10 @@ class IQdrantClient(ABC):
     @abstractmethod
     def get_collection(self, collection_name: str):
         pass
+    
+    @abstractmethod
+    def scroll(self, **kwargs):
+        pass
 
 
 class ISearchService(ABC):
@@ -44,6 +48,16 @@ class IFilterService(ABC):
     
     @abstractmethod
     def to_qdrant_filter(self, filter_dict: dict) -> models.Filter:
+        pass
+    
+    @abstractmethod
+    def retrieve_results_by_jids(
+        self,
+        qdrant_client: IQdrantClient,
+        collection: str,
+        limit: int,
+        aggregated_jids: set
+    ) -> List[Dict[str, Any]]:
         pass
 
 

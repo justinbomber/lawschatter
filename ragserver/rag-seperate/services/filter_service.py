@@ -1,11 +1,11 @@
 import os
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
 from openai import OpenAI
 from qdrant_client import models
 from entities.filters import Filter
 from infrastructure.tokenizer import JiebaLawTokenizer
-from domain.interfaces import IFilterService
+from domain.interfaces import IFilterService, IQdrantClient
 from config.settings import Settings
 
 
@@ -165,4 +165,31 @@ class FilterService(IFilterService):
             result.append(char)
         
         return ''.join(result)
+    
+    def retrieve_results_by_jids(
+        self,
+        qdrant_client: IQdrantClient,
+        collection: str,
+        limit: int,
+        aggregated_jids: Set[str]
+    ) -> List[Dict[str, Any]]:
+        final_results = []
+        for jid in list(aggregated_jids)[:limit]:
+            scroll_results, _ = qdrant_client.scroll(
+                collection_name=collection,
+                scroll_filter=models.Filter(
+                    must=[models.FieldCondition(key="metadata.jid", match=models.MatchValue(value=jid))]
+                ),
+                limit=50,
+                with_payload=True,
+                with_vectors=False
+            )
+            for record in scroll_results or []:
+                final_results.append({
+                    "id": record.id,
+                    "score": None,
+                    "payload": record.payload
+                })
+        
+        return final_results
 
