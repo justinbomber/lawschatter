@@ -56,7 +56,7 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                             "schema": schema["json_schema"]
                         }
                     },
-                    timeout=self.timeout,
+                    timeout=300,
                     reasoning_effort="medium"
                 )
                 
