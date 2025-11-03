@@ -1,3 +1,4 @@
+import asyncio
 from typing import List
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from domain.interfaces import IEmbeddingProvider
@@ -11,9 +12,9 @@ class DenseEmbeddingProvider(IEmbeddingProvider):
             google_api_key=settings.google_ai.api_key,
         )
     
-    def embed_query(self, text: str) -> List[float]:
-        return self.embeddings.embed_query(text)
+    async def embed_query(self, text: str) -> List[float]:
+        return await asyncio.to_thread(self.embeddings.embed_query, text)
     
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        return self.embeddings.embed_documents(texts)
+    async def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return await asyncio.to_thread(self.embeddings.embed_documents, texts)
 

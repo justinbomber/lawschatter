@@ -17,7 +17,7 @@ class AIServiceConfig:
     openai_api_key: str
     model: str = "gpt-5"
     reasoning_effort: str = "medium"
-    timeout: int = 180
+    timeout: int = 300
 
 
 @dataclass
@@ -49,7 +49,7 @@ class AppConfig:
                 openai_api_key=os.getenv("OPENAI_API_KEY"),
                 model=os.getenv("AI_MODEL", "gpt-5"),
                 reasoning_effort=os.getenv("REASONING_EFFORT", "medium"),
-                timeout=int(os.getenv("AI_TIMEOUT", "180")),
+                timeout=int(os.getenv("AI_TIMEOUT", "300")),
             ),
             schema=SchemaConfig(
                 schema_file_path=os.getenv(

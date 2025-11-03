@@ -1,4 +1,5 @@
 import os
+import asyncio
 from typing import Any, Iterable, Union, List
 import numpy as np
 from fastembed.sparse.bm25 import Bm25
@@ -78,9 +79,9 @@ class SparseEmbeddingProvider(IEmbeddingProvider):
     def __init__(self, settings: Settings):
         self.embeddings = ZHTSparseEmbed(stopwords_path=settings.embedding.stopwords_path)
     
-    def embed_query(self, text: str) -> models.SparseVector:
-        return self.embeddings.embed_query(text)
+    async def embed_query(self, text: str) -> models.SparseVector:
+        return await asyncio.to_thread(self.embeddings.embed_query, text)
     
-    def embed_documents(self, texts: List[str]) -> List[models.SparseVector]:
-        return self.embeddings.embed_documents(texts)
+    async def embed_documents(self, texts: List[str]) -> List[models.SparseVector]:
+        return await asyncio.to_thread(self.embeddings.embed_documents, texts)
 

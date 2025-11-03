@@ -5,35 +5,35 @@ from qdrant_client import models
 
 class IEmbeddingProvider(ABC):
     @abstractmethod
-    def embed_query(self, text: str):
+    async def embed_query(self, text: str):
         pass
     
     @abstractmethod
-    def embed_documents(self, texts: List[str]):
+    async def embed_documents(self, texts: List[str]):
         pass
 
 
 class IQdrantClient(ABC):
     @abstractmethod
-    def query_points(self, **kwargs) -> models.QueryResponse:
+    async def query_points(self, **kwargs) -> models.QueryResponse:
         pass
     
     @abstractmethod
-    def get_collections(self):
+    async def get_collections(self):
         pass
     
     @abstractmethod
-    def get_collection(self, collection_name: str):
+    async def get_collection(self, collection_name: str):
         pass
     
     @abstractmethod
-    def scroll(self, **kwargs):
+    async def scroll(self, **kwargs):
         pass
 
 
 class ISearchService(ABC):
     @abstractmethod
-    def search(self, client: IQdrantClient, config: Any) -> models.QueryResponse:
+    async def search(self, client: IQdrantClient, config: Any) -> models.QueryResponse:
         pass
     
     @abstractmethod
@@ -43,7 +43,7 @@ class ISearchService(ABC):
 
 class IFilterService(ABC):
     @abstractmethod
-    def extract_filter_conditions(self, user_question: str) -> List[Dict[str, Any]]:
+    async def extract_filter_conditions(self, user_question: str) -> List[Dict[str, Any]]:
         pass
     
     @abstractmethod
@@ -51,7 +51,7 @@ class IFilterService(ABC):
         pass
     
     @abstractmethod
-    def retrieve_results_by_jids(
+    async def retrieve_results_by_jids(
         self,
         qdrant_client: IQdrantClient,
         collection: str,
@@ -63,6 +63,6 @@ class IFilterService(ABC):
 
 class IRerankService(ABC):
     @abstractmethod
-    def rerank(self, query: str, documents: List[str], top_n: int) -> List[tuple]:
+    async def rerank(self, query: str, documents: List[str], top_n: int) -> List[tuple]:
         pass
 

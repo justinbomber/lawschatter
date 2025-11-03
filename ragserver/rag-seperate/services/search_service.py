@@ -35,24 +35,24 @@ class SearchService(ISearchService):
         self.sparse_embeddings = sparse_provider
         self.settings = settings
     
-    def search(self, client: IQdrantClient, config: SearchConfig) -> models.QueryResponse:
+    async def search(self, client: IQdrantClient, config: SearchConfig) -> models.QueryResponse:
         if not config.query_text:
             raise ValueError("需要提供 query_text")
         
         mode = config.mode.lower()
         
         if mode == "dense":
-            return self._search_dense(client, config)
+            return await self._search_dense(client, config)
         elif mode == "sparse":
-            return self._search_sparse(client, config)
+            return await self._search_sparse(client, config)
         elif mode == "hybrid":
-            return self._search_hybrid(client, config)
+            return await self._search_hybrid(client, config)
         else:
             raise ValueError("mode 只能是 'dense'、'sparse' 或 'hybrid'")
     
-    def _search_dense(self, client: IQdrantClient, config: SearchConfig) -> models.QueryResponse:
-        vector = self.dense_embeddings.embed_query(config.query_text)
-        return client.query_points(
+    async def _search_dense(self, client: IQdrantClient, config: SearchConfig) -> models.QueryResponse:
+        vector = await self.dense_embeddings.embed_query(config.query_text)
+        return await client.query_points(
             collection_name=config.collection,
             query=vector,
             using=config.dense_name,
@@ -63,13 +63,13 @@ class SearchService(ISearchService):
             score_threshold=config.score_threshold,
         )
     
-    def _search_sparse(self, client: IQdrantClient, config: SearchConfig) -> models.QueryResponse:
-        sparse_vector = self.sparse_embeddings.embed_query(config.query_text)
+    async def _search_sparse(self, client: IQdrantClient, config: SearchConfig) -> models.QueryResponse:
+        sparse_vector = await self.sparse_embeddings.embed_query(config.query_text)
         query = models.SparseVector(
             indices=sparse_vector.indices,
             values=sparse_vector.values,
         )
-        return client.query_points(
+        return await client.query_points(
             collection_name=config.collection,
             query=query,
             using=config.sparse_name,
@@ -80,14 +80,14 @@ class SearchService(ISearchService):
             score_threshold=config.score_threshold,
         )
     
-    def _search_hybrid(self, client: IQdrantClient, config: SearchConfig) -> models.QueryResponse:
-        sparse_vector = self.sparse_embeddings.embed_query(config.query_text)
+    async def _search_hybrid(self, client: IQdrantClient, config: SearchConfig) -> models.QueryResponse:
+        sparse_vector = await self.sparse_embeddings.embed_query(config.query_text)
         sparse_query = models.SparseVector(
             indices=sparse_vector.indices,
             values=sparse_vector.values,
         )
         
-        dense_vector = self.dense_embeddings.embed_query(config.query_text)
+        dense_vector = await self.dense_embeddings.embed_query(config.query_text)
         
         prefetch = [
             models.Prefetch(
@@ -106,7 +106,7 @@ class SearchService(ISearchService):
         
         fusion_query = models.FusionQuery(fusion=models.Fusion.DBSF)
         
-        return client.query_points(
+        return await client.query_points(
             collection_name=config.collection,
             prefetch=prefetch,
             query=fusion_query,

@@ -1,4 +1,5 @@
 import logging
+import httpx
 from supabase import create_client
 from openai import OpenAI
 from ..config import AppConfig
@@ -29,8 +30,17 @@ class CLI:
             self.config.database.supabase_key,
         )
         
+        http_client = httpx.Client(
+            timeout=httpx.Timeout(
+                connect=30.0,
+                read=self.config.ai_service.timeout,
+                write=30.0,
+                pool=30.0
+            )
+        )
         openai_client = OpenAI(
-            api_key=self.config.ai_service.openai_api_key
+            api_key=self.config.ai_service.openai_api_key,
+            http_client=http_client
         )
         
         judgment_repo = SupabaseJudgmentRepository(

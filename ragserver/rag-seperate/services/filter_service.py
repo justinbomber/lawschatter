@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import List, Dict, Any, Set
-from openai import OpenAI
+from openai import AsyncOpenAI
 from qdrant_client import models
 from entities.filters import Filter
 from infrastructure.tokenizer import JiebaLawTokenizer
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class FilterService(IFilterService):
     def __init__(self, settings: Settings):
-        self.client = OpenAI(api_key=settings.openai.api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai.api_key)
         self.settings = settings
         
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,30 +27,41 @@ class FilterService(IFilterService):
             query_hmm=True,
         )
     
-    def extract_filter_conditions(self, user_question: str) -> List[Dict[str, Any]]:
+    async def extract_filter_conditions(self, user_question: str) -> List[Dict[str, Any]]:
         system_prompt = """
-你是法律判決查詢的過濾條件抽取助理，請根據使用者的問題，抽取出過濾條件。
+你是法律判決查詢的過濾條件抽取助理。請根據使用者的問題，抽取出過濾條件並輸出 JSON。
 
-請嚴格按照 JSON schema 格式輸出，包含以下主要結構：
+輸出結構(JSON schema)：
 
-1. case_metadata: 案件元資料
-   - first_instance: 是否為地方法院判決
-   - second_instance: 是否為高等法院判決
-   - third_instance: 是否為最高法院判決
-   - case_type: 案件類型（刑法/民法/行政法）
-   - jtitle_type: 案件標題類型（詐欺/毒品/竊盜/侵占/妨害性自主/傷害/公共危險/槍砲彈藥刀械/偽造文書/其他刑事/債務給付類/侵權行為／損害賠償類/婚姻家庭類/物權類/公司／商事類/勞資爭議類/保險類/其他民事）
+case_metadata: 案件元資料
+first_instance: 是否為地方法院判決
+second_instance: 是否為高等法院判決
+third_instance: 是否為最高法院判決
+case_type: 案件類型（刑法/民法/行政法）
+jtitle_type: 案件標題類型（詐欺/毒品/竊盜/侵占/妨害性自主/傷害/公共危險/槍砲彈藥刀械/偽造文書/其他刑事/債務給付類/侵權行為／損害賠償類/婚姻家庭類/物權類/公司／商事類/勞資爭議類/保險類/其他民事）
+defendants: 被告相關資訊（數組格式，每個元素為一位被告的條件物件）
+可包含但不限於：confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval
+角色詞彙正規化與展開規則（重要）：
 
-2. defendants: 被告相關資訊（數組格式）
-
+將使用者輸入中任何俗稱、簡稱或行話角色（例如：車手、水房、把風/望風、車手頭、主嫌、掮客、白手套等）改寫為判決常見的中性法律描述，著重「具體職責與行為」而非標籤。
+展開的 defendants_role 應以行為描述為主，使用動詞與客觀職能，不加入未被使用者明示的細節（如具體時間/地點/金額/次數）。
+可在展開描述後，以（俗稱：…）附註原俗稱以利檢索，但不得只寫俗稱。
+範例（僅示意表述風格，不要求逐字相同）：
+車手 → 「提供（或保管、使用）金融帳戶、提款卡及密碼，負責收受詐得款項並提領或轉交之成員，屬於金流收受與提領的人頭帳戶供應／操作角色（俗稱：車手）」。
+把風/望風 → 「於犯案過程中負責警戒、通風報信、監看周遭動態以協助犯罪順利實施之成員（俗稱：把風/望風）」。
+水房/金流中介 → 「集中管理、分拆或匯兌詐得款項，指示或分配資金流向之成員（俗稱：水房）」。
+若使用者未提供任何角色資訊，則不要新增或推測 defendants_role。
 輸出要求：
-- 只需要輸出實際存在的過濾條件，不要推測或添加不存在的條件
-- 數組字段使用列表格式，如 ["詐欺", "洗錢"]
-- 布林值使用 true/false
-- 字符串使用引號包裹
-- 如果問題中沒有提到任何過濾條件，請忽略，並且不允許猜測或添加預設值
-- "defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"一定至少要選一個填入，也可以一至多個填入
+
+僅輸出實際存在於使用者問題中的過濾條件；不得推測或添加不存在的條件或預設值。
+數組字段使用列表格式，如 ["詐欺", "洗錢"]；布林值用 true/false；字串需加引號。
+僅在問題有明示時，才填寫對應欄位；未提到者不要輸出。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 至少填入一個欄位（可一至多個）。
+若使用者問題含「未認罪」「否認犯行」「緩刑」等，對應填入 confession_status、has_probation 或 E_legal_eval（僅限問題明示者）。
+僅輸出 JSON，無多餘文字或解釋。
 """
-        response = self.client.responses.parse(
+# - "defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"一定至少要選一個填入，也可以一至多個填入。且填入的內容需要詳細描述，每個名詞
+        response = await self.client.responses.parse(
             # model=self.settings.openai.model,
             model="gpt-5",
             input=[
@@ -149,7 +160,73 @@ class FilterService(IFilterService):
         defendants_list = filter_dict.get("defendants") or []
         if isinstance(defendants_list, list):
             for d in defendants_list:
-                pass
+                defendant_fields = [
+                    # 基本信息
+                    "defendant_name",
+                    # 辯護人相關
+                    "has_defense_attorney", "defense_attorney_name",
+                    # 起訴法條變更
+                    "indictment_changed", "original_indictment_articles", "changed_indictment_articles",
+                    # 新舊法問題
+                    "has_new_old_law_issue", "new_old_law_disputed_article",
+                    # 自白與陳述
+                    "has_contradictory_statements", "confession_status",
+                    # 判決結果
+                    "is_full_acquittal", "is_acquittal_due_to_insufficient_evidence", "is_other_verdict", "is_conviction",
+                    # 罪名與法條
+                    "crime_list", "violated_law_articles",
+                    # 刑罰
+                    "is_fixed_term_imprisonment", "fixed_term_years", "fixed_term_months",
+                    "is_life_imprisonment", "is_death_penalty", "is_detention", "detention_days",
+                    # 罰金
+                    "has_concurrent_fine", "fine_amount", "may_convert_to_fine",
+                    # 緩刑
+                    "has_probation", "probation_period",
+                    # 減刑
+                    "has_mitigation_articles", "mitigation_articles",
+                    # 和解
+                    "has_settlement", "settlement_amount", "is_settlement_fulfilled", "is_settlement_installment",
+                    # 證人
+                    "has_witnesses", "witness_testified_in_investigation", "witness_testified_in_trial",
+                    # 扣押沒收
+                    "has_seized_items", "seized_items", "has_confiscated_items", "confiscated_items",
+                    # 接續犯
+                    "is_continuous_offense",
+                    # 審級
+                    "is_first_instance", "is_second_instance", "is_third_instance", "has_previous_instance",
+                    # 上訴相關
+                    "is_reversed_and_remanded", "is_sentence_reduced", "is_sentence_increased",
+                    "is_law_article_changed_from_previous", "changed_law_articles",
+                    "previous_instance_confession_status", "current_instance_confession_status",
+                    "has_inconsistent_statements_with_previous", "statement_difference_description"
+                ]
+                
+                for key in defendant_fields:
+                    value = d.get(key)
+                    if value is None:
+                        continue
+                    
+                    # 處理列表類型字段
+                    # "crime_list",
+                    if key in [ "violated_law_articles", "original_indictment_articles", 
+                               "changed_indictment_articles", "seized_items", "confiscated_items", 
+                               "changed_law_articles"]:
+                        if isinstance(value, list) and value:
+                            must_conditions.append(
+                                models.FieldCondition(
+                                    key=f"metadata.defendants[].{key}",
+                                    match=models.MatchAny(any=value)
+                                )
+                            )
+                    else:
+                        # 處理其他字段（字符串、布林值、整數）
+                        if isinstance(value, (str, bool, int)):
+                            must_conditions.append(
+                                models.FieldCondition(
+                                    key=f"metadata.defendants[].{key}",
+                                    match=models.MatchValue(value=value)
+                                )
+                            )
         
         return models.Filter(must=must_conditions) if must_conditions else models.Filter()
     
@@ -166,7 +243,7 @@ class FilterService(IFilterService):
         
         return ''.join(result)
     
-    def retrieve_results_by_jids(
+    async def retrieve_results_by_jids(
         self,
         qdrant_client: IQdrantClient,
         collection: str,
@@ -175,7 +252,7 @@ class FilterService(IFilterService):
     ) -> List[Dict[str, Any]]:
         final_results = []
         for jid in list(aggregated_jids)[:limit]:
-            scroll_results, _ = qdrant_client.scroll(
+            scroll_results, _ = await qdrant_client.scroll(
                 collection_name=collection,
                 scroll_filter=models.Filter(
                     must=[models.FieldCondition(key="metadata.jid", match=models.MatchValue(value=jid))]

@@ -19,7 +19,7 @@ class OpenAISummaryExtractor(SummaryExtractor):
         client: OpenAI, 
         model: str = "gpt-5",
         reasoning_effort: str = "medium",
-        timeout: int = 180,
+        timeout: int = 300,
     ):
         self.client = client
         self.model = model
