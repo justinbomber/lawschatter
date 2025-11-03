@@ -56,7 +56,17 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
 僅輸出實際存在於使用者問題中的過濾條件；不得推測或添加不存在的條件或預設值。
 數組字段使用列表格式，如 ["詐欺", "洗錢"]；布林值用 true/false；字串需加引號。
 僅在問題有明示時，才填寫對應欄位；未提到者不要輸出。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
 若使用者問題含「未認罪」「否認犯行」「緩刑」等，對應填入 confession_status、has_probation 或 E_legal_eval（僅限問題明示者）。
 僅輸出 JSON，無多餘文字或解釋。
 """
@@ -75,6 +85,10 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
         result = response.output_parsed
         structured_output = result.model_dump(exclude_none=True, exclude_unset=True)
         logger.info(f"結構化輸出: {structured_output}")
+        
+        if "defendants" in structured_output and isinstance(structured_output["defendants"], list):
+            if len(structured_output["defendants"]) > 0:
+                structured_output["defendants"] = [structured_output["defendants"][0]]
         
         output_lst = []
         summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval", "case_fact_summary"]
@@ -136,7 +150,15 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
                         )
                     )
             elif value is not None:
-                if isinstance(value, (str, bool)):
+                if isinstance(value, str):
+                    if value != "":
+                        must_conditions.append(
+                            models.FieldCondition(
+                                key=f"metadata.{key}",
+                                match=models.MatchValue(value=value)
+                            )
+                        )
+                elif isinstance(value, bool):
                     must_conditions.append(
                         models.FieldCondition(
                             key=f"metadata.{key}",
@@ -149,7 +171,15 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
             for key in ["first_instance", "second_instance", "third_instance", "case_type", "jtitle_type"]:
                 value = cm.get(key)
                 if value is not None:
-                    if isinstance(value, (str, bool)):
+                    if isinstance(value, str):
+                        if value != "":
+                            must_conditions.append(
+                                models.FieldCondition(
+                                    key=f"metadata.case_metadata.{key}",
+                                    match=models.MatchValue(value=value)
+                                )
+                            )
+                    elif isinstance(value, bool):
                         must_conditions.append(
                             models.FieldCondition(
                                 key=f"metadata.case_metadata.{key}",
@@ -220,7 +250,15 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
                             )
                     else:
                         # 處理其他字段（字符串、布林值、整數）
-                        if isinstance(value, (str, bool, int)):
+                        if isinstance(value, str):
+                            if value != "":
+                                must_conditions.append(
+                                    models.FieldCondition(
+                                        key=f"metadata.defendants[].{key}",
+                                        match=models.MatchValue(value=value)
+                                    )
+                                )
+                        elif isinstance(value, (bool, int)):
                             must_conditions.append(
                                 models.FieldCondition(
                                     key=f"metadata.defendants[].{key}",
