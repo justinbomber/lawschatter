@@ -10,6 +10,7 @@ from infrastructure.embeddings.sparse_embedding import SparseEmbeddingProvider
 from services.search_service import SearchService
 from services.filter_service import FilterService
 from services.rerank_service import RerankService
+from services.document_search_orchestrator import DocumentSearchOrchestrator
 from controllers.search_controller import SearchController
 from controllers.api_router import create_router
 
@@ -42,10 +43,16 @@ async def lifespan(app: FastAPI):
     filter_service = FilterService(settings)
     rerank_service = RerankService(settings)
     
-    search_controller = SearchController(
+    document_search_orchestrator = DocumentSearchOrchestrator(
         qdrant_client=qdrant_client,
         search_service=search_service,
         filter_service=filter_service,
+        settings=settings
+    )
+    
+    search_controller = SearchController(
+        qdrant_client=qdrant_client,
+        document_search_orchestrator=document_search_orchestrator,
         settings=settings
     )
     

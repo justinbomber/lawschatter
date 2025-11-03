@@ -66,3 +66,16 @@ class IRerankService(ABC):
     async def rerank(self, query: str, documents: List[str], top_n: int) -> List[tuple]:
         pass
 
+
+class IDocumentSearchOrchestrator(ABC):
+    @abstractmethod
+    async def orchestrate_search(
+        self,
+        collection: str,
+        query_text: str,
+        mode: str,
+        limit: int,
+        logic: str = "AND"
+    ) -> List[Dict[str, Any]]:
+        pass
+
