@@ -41,6 +41,7 @@ case_type: 案件類型（刑法/民法/行政法）
 jtitle_type: 案件標題類型（詐欺/毒品/竊盜/侵占/妨害性自主/傷害/公共危險/槍砲彈藥刀械/偽造文書/其他刑事/債務給付類/侵權行為／損害賠償類/婚姻家庭類/物權類/公司／商事類/勞資爭議類/保險類/其他民事）
 defendants: 被告相關資訊（數組格式，每個元素為一位被告的條件物件）
 可包含但不限於：confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval
+negated_fields: 需要否定的欄位列表（識別否定語義並記錄）
 角色詞彙正規化與展開規則（重要）：
 
 將使用者輸入中任何俗稱、簡稱或行話角色（例如：車手、水房、把風/望風、車手頭、主嫌、掮客、白手套等）改寫為判決常見的中性法律描述，著重「具體職責與行為」而非標籤。
@@ -60,14 +61,25 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
 在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
 在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
 在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
+已經被量化為metadata的欄位，不用重複填入defendants的物件中。
+已經被量化為metadata的欄位，不用重複填入defendants的物件中。
+已經被量化為metadata的欄位，不用重複填入defendants的物件中。
+已經被量化為metadata的欄位，不用重複填入defendants的物件中。
 若使用者問題含「未認罪」「否認犯行」「緩刑」等，對應填入 confession_status、has_probation 或 E_legal_eval（僅限問題明示者）。
+否定語義識別規則（重要）：
+當使用者問句中包含否定詞（如：沒有、不是、未、非、無、不具、排除等）時，必須識別並處理：
+1. 識別否定對象：確定否定詞修飾的是哪個欄位
+2. 填入 negated_fields：將需要否定的欄位路徑加入 negated_fields 列表
+3. 欄位路徑格式：
+   - 一般欄位直接使用欄位名：如 "jyear", "jcase"
+   - case_metadata 下的欄位：使用 "case_metadata.欄位名"，如 "case_metadata.first_instance"
+   - defendants 下的欄位：使用 "defendants.欄位名"，如 "defendants.has_defense_attorney", "defendants.has_probation"
+4. 同時仍需填入該欄位的值（用於匹配的目標值）
+否定語義範例：
+- "沒有辯護人的案件" → 填入 defendants.has_defense_attorney = true，並在 negated_fields 加入 "defendants.has_defense_attorney"
+- "不是一審判決" → 填入 case_metadata.first_instance = true，並在 negated_fields 加入 "case_metadata.first_instance"
+- "未給予緩刑" → 填入 defendants.has_probation = true，並在 negated_fields 加入 "defendants.has_probation"
+- "不是完全認罪" → 填入 defendants.confession_status = "完全認罪"，並在 negated_fields 加入 "defendants.confession_status"
 僅輸出 JSON，無多餘文字或解釋。
 """
 # - "defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"一定至少要選一個填入，也可以一至多個填入。且填入的內容需要詳細描述，每個名詞
@@ -92,8 +104,12 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
         
         output_lst = []
         summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval", "case_fact_summary"]
-        _metadata = structured_output
+        _metadata = structured_output.copy()
         tmp_summary = {}
+        
+        negated_fields_value = _metadata.get("negated_fields")
+        if "negated_fields" in _metadata:
+            del _metadata["negated_fields"]
         
         for field in summary_fields:
             if field in structured_output and structured_output[field]:
@@ -104,12 +120,16 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
             tmp_metadata = _metadata.copy()
             tmp_metadata[summary_type] = tmp_summary[summary_type]
             tmp_metadata["summary_type"] = [summary_type]
+            if negated_fields_value:
+                tmp_metadata["negated_fields"] = negated_fields_value
             output_lst.append(tmp_metadata)
                 
         return output_lst
     
     def to_qdrant_filter(self, filter_dict: dict) -> models.Filter:
         must_conditions = []
+        must_not_conditions = []
+        negated_fields = set(filter_dict.get("negated_fields", []))
         
         for key in ["jid_full", "jyear", "jcase", "jno", "jdate", "summary_type"]:
             value = filter_dict.get(key)
@@ -171,21 +191,27 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
             for key in ["first_instance", "second_instance", "third_instance", "case_type", "jtitle_type"]:
                 value = cm.get(key)
                 if value is not None:
+                    field_path = f"case_metadata.{key}"
+                    is_negated = field_path in negated_fields
+                    condition = None
+                    
                     if isinstance(value, str):
                         if value != "":
-                            must_conditions.append(
-                                models.FieldCondition(
-                                    key=f"metadata.case_metadata.{key}",
-                                    match=models.MatchValue(value=value)
-                                )
-                            )
-                    elif isinstance(value, bool):
-                        must_conditions.append(
-                            models.FieldCondition(
+                            condition = models.FieldCondition(
                                 key=f"metadata.case_metadata.{key}",
                                 match=models.MatchValue(value=value)
                             )
+                    elif isinstance(value, bool):
+                        condition = models.FieldCondition(
+                            key=f"metadata.case_metadata.{key}",
+                            match=models.MatchValue(value=value)
                         )
+                    
+                    if condition:
+                        if is_negated:
+                            must_not_conditions.append(condition)
+                        else:
+                            must_conditions.append(condition)
         
         defendants_list = filter_dict.get("defendants") or []
         if isinstance(defendants_list, list):
@@ -236,37 +262,43 @@ defendants: 被告相關資訊（數組格式，每個元素為一位被告的�
                     if value is None:
                         continue
                     
+                    field_path = f"defendants.{key}"
+                    is_negated = field_path in negated_fields
+                    condition = None
+                    
                     # 處理列表類型字段
                     # "crime_list",
                     if key in [ "violated_law_articles", "original_indictment_articles", 
                                "changed_indictment_articles", "seized_items", "confiscated_items", 
                                "changed_law_articles"]:
                         if isinstance(value, list) and value:
-                            must_conditions.append(
-                                models.FieldCondition(
-                                    key=f"metadata.defendants[].{key}",
-                                    match=models.MatchAny(any=value)
-                                )
+                            condition = models.FieldCondition(
+                                key=f"metadata.defendants[].{key}",
+                                match=models.MatchAny(any=value)
                             )
                     else:
                         # 處理其他字段（字符串、布林值、整數）
                         if isinstance(value, str):
                             if value != "":
-                                must_conditions.append(
-                                    models.FieldCondition(
-                                        key=f"metadata.defendants[].{key}",
-                                        match=models.MatchValue(value=value)
-                                    )
-                                )
-                        elif isinstance(value, (bool, int)):
-                            must_conditions.append(
-                                models.FieldCondition(
+                                condition = models.FieldCondition(
                                     key=f"metadata.defendants[].{key}",
                                     match=models.MatchValue(value=value)
                                 )
+                        elif isinstance(value, (bool, int)):
+                            condition = models.FieldCondition(
+                                key=f"metadata.defendants[].{key}",
+                                match=models.MatchValue(value=value)
                             )
+                    
+                    if condition:
+                        if is_negated:
+                            must_not_conditions.append(condition)
+                        else:
+                            must_conditions.append(condition)
         
-        return models.Filter(must=must_conditions) if must_conditions else models.Filter()
+        if must_conditions or must_not_conditions:
+            return models.Filter(must=must_conditions, must_not=must_not_conditions)
+        return models.Filter()
     
     def format_jid_full(self, jid_full: str) -> str:
         if not jid_full:

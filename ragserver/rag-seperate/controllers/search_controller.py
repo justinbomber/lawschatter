@@ -41,9 +41,11 @@ class SearchController:
         # 動態top_k: 基於limit的比例，適合百萬級數據 (factor可調整，越大越準但越慢)
         # top_k_factor = 10  # e.g., 如果limit=10，top_k=100
         # top_k = max(50, request.limit * top_k_factor)  # 最小50，確保足夠候選
-        top_k = 15  # 僅取前五筆作為jid聚合依據
+        top_k = 10  # 僅取前五筆作為jid聚合依據
         
-        # 收集所有搜尋結果的jid和score (用於累加相同jid的score)
+        # 收集每個條件的jid集合 (用於AND/OR邏輯判斷)
+        condition_jid_sets: List[Set[str]] = []
+        # 同時收集所有jid的累加score (用於排序)
         jid_score_map: Dict[str, float] = {}
         
         for structured_filter in structured_filter_lst:
@@ -69,7 +71,13 @@ class SearchController:
             field_type = None
             for field in summary_fields:
                 if field in structured_filter and structured_filter[field]:
-                    reconstructed_query = structured_filter[field]
+                    extracted_value = structured_filter[field]
+                    # 如果提取的值太短（少於10個字），使用原始完整查詢以保持語義搜尋效果
+                    if len(extracted_value) < 10:
+                        reconstructed_query = request.query_text
+                        logger.info(f"欄位 '{field}' 值過短 ('{extracted_value}')，使用原始查詢進行語義搜尋")
+                    else:
+                        reconstructed_query = extracted_value
                     field_type = field  # 記錄field_type用於過濾
                     # 不刪除structured_filter[field]，以保留原結構; 如需刪除，可添加del
                     break
@@ -81,32 +89,50 @@ class SearchController:
                     mode=request.mode,
                     filter=qdrant_filter_sub,
                     limit=top_k,  # 使用動態top_k
-                    score_threshold=0.8
+                    score_threshold=0.95
                 )
                 
                 response = await self.search_service.search(self.qdrant_client, config)
                 results = self.search_service.flatten_points(response)
                 
-                # 累加相同jid的score
+                # 收集此條件的jid集合 (用於AND/OR邏輯)
+                condition_jids = set()
                 print("=" * 50)
                 for result in results:
                     jid = result.get('payload').get('metadata').get('jid')
                     score = result.get('score', 0)
                     print(f"-----> score: {score}, jid: {jid}")
                     
+                    # 加入此條件的jid集合
+                    condition_jids.add(jid)
+                    
+                    # 累加score到全局jid_score_map
                     if jid in jid_score_map:
                         jid_score_map[jid] += score
                     else:
                         jid_score_map[jid] = score
+                
                 print("=" * 50)
+                condition_jid_sets.append(condition_jids)
             
-            logger.info(f"條件 '{field_type or 'general'}' 處理完成")
+            logger.info(f"條件 '{field_type or 'general'}' 結果: {len(condition_jids)} 個 jid")
         
-        # 按累加score排序，取前三個
-        sorted_jids = sorted(jid_score_map.items(), key=lambda x: x[1], reverse=True)[:3]
+        # 應用邏輯聚合 (AND/OR)
+        if not condition_jid_sets:
+            aggregated_jids_by_logic = set()
+        elif logic == "AND":
+            aggregated_jids_by_logic = set.intersection(*condition_jid_sets) if condition_jid_sets else set()
+        elif logic == "OR":
+            aggregated_jids_by_logic = set.union(*condition_jid_sets) if condition_jid_sets else set()
+        
+        logger.info(f"邏輯聚合 ({logic}) 後的 jid: {len(aggregated_jids_by_logic)} 個")
+        
+        # 在符合邏輯條件的jid中，按累加score排序，取前三名
+        filtered_jid_scores = {jid: jid_score_map[jid] for jid in aggregated_jids_by_logic if jid in jid_score_map}
+        sorted_jids = sorted(filtered_jid_scores.items(), key=lambda x: x[1], reverse=True)[:3]
         aggregated_jids = {jid for jid, _ in sorted_jids}
         
-        logger.info(f"累加分數後排序結果 (前三名):")
+        logger.info(f"按累加分數排序後的前三名:")
         for jid, total_score in sorted_jids:
             logger.info(f"  jid: {jid}, 累加分數: {total_score}")
         
