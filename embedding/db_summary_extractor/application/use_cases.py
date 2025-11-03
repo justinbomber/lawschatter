@@ -62,20 +62,41 @@ class ExtractSummaryUseCase:
     def _process_judgment(self, jid: str, jdate: str) -> bool:
         logger.info(f"處理判決: {jid}")
         
-        judgment = self.judgment_repo.get_judgment(jid)
+        attempt = 0
         
-        schema = self.schema_provider.get_schema()
-        extraction_result = self.extractor.extract(judgment, schema)
-        
-        summary_records = self.decomposer.decompose(
-            jid, 
-            jdate, 
-            extraction_result
-        )
-        
-        for record in summary_records:
-            self.summary_repo.save_summary(record)
-        
-        logger.info(f"成功處理並插入 {len(summary_records)} 筆 summary: {jid}")
-        return True
+        while True:
+            attempt += 1
+            try:
+                if attempt > 1:
+                    logger.info(f"重新查詢資料並嘗試處理判決 (第 {attempt} 次): {jid}")
+                
+                judgment = self.judgment_repo.get_judgment(jid)
+                
+                schema = self.schema_provider.get_schema()
+                extraction_result = self.extractor.extract(judgment, schema)
+                
+                summary_records = self.decomposer.decompose(
+                    jid, 
+                    jdate, 
+                    extraction_result
+                )
+                
+                for record in summary_records:
+                    self.summary_repo.save_summary(record)
+                
+                logger.info(f"成功處理並插入 {len(summary_records)} 筆 summary: {jid}")
+                return True
+                
+            except Exception as e:
+                error_msg = str(e)
+                
+                if "達到最大重試次數" in error_msg and "需要重新查詢資料" in error_msg:
+                    logger.warning(
+                        f"API 重試次數用盡，準備重新查詢資料並繼續重試: {jid}. "
+                        f"錯誤: {error_msg}"
+                    )
+                    continue
+                else:
+                    logger.error(f"處理判決時發生錯誤，跳過此判決: {jid}. 錯誤: {error_msg}")
+                    return False
 

@@ -22,13 +22,15 @@ class OpenAISummaryExtractor(SummaryExtractor):
         model: str = "gpt-5",
         reasoning_effort: str = "medium",
         timeout: int = 600,
-        max_wait_time: int = 300
+        max_wait_time: int = 300,
+        max_retries: int = 5
     ):
         self.client = client
         self.model = model
         self.reasoning_effort = reasoning_effort
         self.timeout = timeout
         self.max_wait_time = max_wait_time  # 最大等待時間（秒），防止等待時間過長
+        self.max_retries = max_retries  # 最大重試次數
     
     def extract(
         self, 
@@ -44,17 +46,16 @@ class OpenAISummaryExtractor(SummaryExtractor):
         )
         user_prompt = judgment.jfull
         
-        # 無限重試直到成功
+        # 最多重試 max_retries 次
         attempt = 0
-        while True:
+        
+        while attempt < self.max_retries:
             attempt += 1
             try:
                 if attempt == 1:
                     logger.info(f"嘗試提取 summary: {judgment.jid}")
-                elif attempt % 10 == 0:
-                    logger.warning(f"仍在重試提取 summary (第 {attempt} 次): {judgment.jid}")
                 else:
-                    logger.debug(f"重試提取 summary (第 {attempt} 次): {judgment.jid}")
+                    logger.warning(f"重試提取 summary (第 {attempt}/{self.max_retries} 次): {judgment.jid}")
                 
                 resp = self.client.chat.completions.create(
                     model=self.model,
@@ -103,22 +104,32 @@ class OpenAISummaryExtractor(SummaryExtractor):
                 )
                 
             except (APITimeoutError, APIConnectionError) as e:
-                # 計算等待時間：指數退避，但限制最大等待時間
-                wait_time = min((attempt * 5), self.max_wait_time)
+                if attempt >= self.max_retries:
+                    logger.error(
+                        f"達到最大重試次數 {self.max_retries} 次，API 請求仍然失敗: {judgment.jid}. "
+                        f"錯誤: {str(e)}"
+                    )
+                    raise Exception(
+                        f"達到最大重試次數 {self.max_retries} 次，需要重新查詢資料: {judgment.jid}. "
+                        f"最後錯誤: {str(e)}"
+                    )
                 
+                wait_time = min((attempt * 5), self.max_wait_time)
                 logger.warning(
-                    f"API 請求超時或連接錯誤 (第 {attempt} 次): {judgment.jid}. "
+                    f"API 請求超時或連接錯誤 (第 {attempt}/{self.max_retries} 次): {judgment.jid}. "
                     f"錯誤: {str(e)}. {wait_time} 秒後重試..."
                 )
                 time.sleep(wait_time)
-                # 繼續循環，無限重試
                     
             except APIError as e:
-                # 對於其他 API 錯誤，不重試
                 logger.error(f"API 錯誤: {judgment.jid}. 錯誤: {str(e)}")
                 raise
                 
             except Exception as e:
                 logger.error(f"未預期的錯誤: {judgment.jid}. 錯誤: {str(e)}")
                 raise
+        
+        # 理論上不會執行到這裡，但為了安全起見
+        logger.error(f"達到最大重試次數 {self.max_retries} 次，提取失敗: {judgment.jid}")
+        raise Exception(f"達到最大重試次數 {self.max_retries} 次，需要重新查詢資料: {judgment.jid}")
 
