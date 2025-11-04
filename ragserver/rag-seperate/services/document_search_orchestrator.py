@@ -61,57 +61,41 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         limit: int,
         logic: str = "AND"
     ) -> List[Dict[str, Any]]:
-        structured_filter_lst = await self.filter_service.extract_filter_conditions(query_text)
-        """
+        # structured_filter_lst = await self.filter_service.extract_filter_conditions(query_text)
+        # """
         structured_filter_lst = [
   {
     "defendants": [
       {
-        "has_new_old_law_issue": True,
-        "new_old_law_disputed_article": "洗錢防制法",
-        "has_previous_instance": True,
-        "is_reversed_and_remanded": True,
-        "is_sentence_reduced": True,
-        "is_law_article_changed_from_previous": True,
-        "changed_law_articles": [
-          "洗錢防制法"
-        ]
+        "is_full_acquittal": True
       }
     ],
     "case_metadata": {
-      "second_instance": True,
-      "case_type": "刑法"
+      "case_type": "刑法",
+      "jtitle_type": "詐欺"
     },
-    "B_claim": "二審主張依詐欺犯罪危害防制條例第47條請求減輕其刑",
+    "defendants_role": "提供或出借金融帳戶資訊供詐欺金流使用、以利收受或轉移被害人款項之成員（俗稱：人頭帳戶／車手）",
     "summary_type": [
-      "B_claim"
+      "defendants_role"
     ]
   },
   {
     "defendants": [
       {
-        "has_new_old_law_issue": True,
-        "new_old_law_disputed_article": "洗錢防制法",
-        "has_previous_instance": True,
-        "is_reversed_and_remanded": True,
-        "is_sentence_reduced": True,
-        "is_law_article_changed_from_previous": True,
-        "changed_law_articles": [
-          "洗錢防制法"
-        ]
+        "is_full_acquittal": True
       }
     ],
     "case_metadata": {
-      "second_instance": True,
-      "case_type": "刑法"
+      "case_type": "刑法",
+      "jtitle_type": "詐欺"
     },
-    "E_legal_eval": "二審就洗錢防制法部分適用舊法（從舊從輕），撤銷原判決並改判減輕刑度",
+    "A_fact": "被告未能提供與上游或共犯之對話紀錄",
     "summary_type": [
-      "E_legal_eval"
+      "A_fact"
     ]
   }
 ]
-        """
+        # """
         logger.info("=" * 50)
         logger.info(f"過濾條件:\n{json.dumps(structured_filter_lst, ensure_ascii=False, indent=2)}")
         logger.info("=" * 50)
@@ -164,7 +148,8 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             if negative_conditions:
                 logger.info(f"啟用通用負面條件過濾，共 {len(negative_conditions)} 個條件")
                 logger.info(f"負面條件列表: {negative_conditions}")
-                negative_embeddings = self.semantic_model.encode(negative_conditions, convert_to_tensor=True)
+                negative_embeddings = self.semantic_model.encode(reconstructed_query, convert_to_tensor=True)
+                # negative_embeddings = self.semantic_model.encode(negative_conditions, convert_to_tensor=True)
             else:
                 logger.info("未檢測到負面條件，跳過語義過濾")
             
@@ -189,6 +174,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                         jid = result.get('payload', {}).get('metadata', {}).get('jid')
                         
                         content_embedding = self.semantic_model.encode(page_content, convert_to_tensor=True)
+                        logger.info(f"---> page_content: {page_content}")
                         similarities = util.cos_sim(negative_embeddings, content_embedding)
                         max_similarity = similarities.max().item()
                         
@@ -246,11 +232,15 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         
         simplified_results = []
         for result in detailed_results:
+            defendants = []
             payload = result.get('payload', {})
             metadata = payload.get('metadata', {})
+            for defendant in metadata.get('defendants', []):
+                defendants.append(defendant.get('defendant_name'))
             simplified_results.append({
                 "page_content": payload.get('page_content'),
-                "jid": metadata.get('jid')
+                "jid": metadata.get('jid'),
+                "defendants": defendants
             })
 
         logger.info(f"最終搜尋結果: 總共 {len(simplified_results)} 個結果")
