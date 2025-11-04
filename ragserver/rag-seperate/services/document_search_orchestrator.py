@@ -62,6 +62,56 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         logic: str = "AND"
     ) -> List[Dict[str, Any]]:
         structured_filter_lst = await self.filter_service.extract_filter_conditions(query_text)
+        """
+        structured_filter_lst = [
+  {
+    "defendants": [
+      {
+        "has_new_old_law_issue": True,
+        "new_old_law_disputed_article": "洗錢防制法",
+        "has_previous_instance": True,
+        "is_reversed_and_remanded": True,
+        "is_sentence_reduced": True,
+        "is_law_article_changed_from_previous": True,
+        "changed_law_articles": [
+          "洗錢防制法"
+        ]
+      }
+    ],
+    "case_metadata": {
+      "second_instance": True,
+      "case_type": "刑法"
+    },
+    "B_claim": "二審主張依詐欺犯罪危害防制條例第47條請求減輕其刑",
+    "summary_type": [
+      "B_claim"
+    ]
+  },
+  {
+    "defendants": [
+      {
+        "has_new_old_law_issue": True,
+        "new_old_law_disputed_article": "洗錢防制法",
+        "has_previous_instance": True,
+        "is_reversed_and_remanded": True,
+        "is_sentence_reduced": True,
+        "is_law_article_changed_from_previous": True,
+        "changed_law_articles": [
+          "洗錢防制法"
+        ]
+      }
+    ],
+    "case_metadata": {
+      "second_instance": True,
+      "case_type": "刑法"
+    },
+    "E_legal_eval": "二審就洗錢防制法部分適用舊法（從舊從輕），撤銷原判決並改判減輕刑度",
+    "summary_type": [
+      "E_legal_eval"
+    ]
+  }
+]
+        """
         logger.info("=" * 50)
         logger.info(f"過濾條件:\n{json.dumps(structured_filter_lst, ensure_ascii=False, indent=2)}")
         logger.info("=" * 50)
@@ -73,17 +123,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             logic = "AND"
         
         top_k = 15
-        
-        negative_conditions = self._extract_negative_conditions(query_text)
-        negative_embeddings = None
-        similarity_threshold = 0.7
-        
-        if negative_conditions:
-            logger.info(f"啟用通用負面條件過濾，共 {len(negative_conditions)} 個條件")
-            logger.info(f"負面條件列表: {negative_conditions}")
-            negative_embeddings = self.semantic_model.encode(negative_conditions, convert_to_tensor=True)
-        else:
-            logger.info("未檢測到負面條件，跳過語義過濾")
         
         condition_jid_sets: List[Set[str]] = []
         jid_score_map: Dict[str, float] = {}
@@ -104,7 +143,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             logger.info("=" * 50)
             logger.info(f"搜尋請求: collection={collection}, query='{query_text}', mode={mode}, logic={logic}")
             logger.info("=" * 50)
-            
+
             reconstructed_query = ""
             field_type = None
             for field in summary_fields:
@@ -117,6 +156,17 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                         reconstructed_query = extracted_value
                     field_type = field
                     break
+
+            # 負面條件過濾
+            negative_conditions = self._extract_negative_conditions(reconstructed_query)
+            negative_embeddings = None
+            similarity_threshold = 0.7
+            if negative_conditions:
+                logger.info(f"啟用通用負面條件過濾，共 {len(negative_conditions)} 個條件")
+                logger.info(f"負面條件列表: {negative_conditions}")
+                negative_embeddings = self.semantic_model.encode(negative_conditions, convert_to_tensor=True)
+            else:
+                logger.info("未檢測到負面條件，跳過語義過濾")
             
             for qdrant_filter_sub in qdrant_filter_lst:
                 config = SearchConfig(

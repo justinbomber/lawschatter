@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 from typing import List, Dict, Any, Set
 from openai import AsyncOpenAI
@@ -57,19 +58,24 @@ negated_fields: 需要否定的欄位列表（識別否定語義並記錄）
 僅輸出實際存在於使用者問題中的過濾條件；不得推測或添加不存在的條件或預設值。
 數組字段使用列表格式，如 ["詐欺", "洗錢"]；布林值用 true/false；字串需加引號。
 僅在問題有明示時，才填寫對應欄位；未提到者不要輸出。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval" 一定要至少填入一個欄位（可一至多個）。
-已經被量化為metadata的欄位，不用重複填入defendants的物件中。
-已經被量化為metadata的欄位，不用重複填入defendants的物件中。
-已經被量化為metadata的欄位，不用重複填入defendants的物件中。
-已經被量化為metadata的欄位，不用重複填入defendants的物件中。
+"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
+"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
+"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
+"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
+"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
+在 defendants 物件中，**分類類別**一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，**分類類別**一定要至少填入一個欄位（可一至多個）。
+在 defendants 物件中，**分類類別**一定要至少填入一個欄位（可一至多個）。
+已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
+已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
+已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
+已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
+已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
 若使用者問題含「未認罪」「否認犯行」「緩刑」等，對應填入 confession_status、has_probation 或 E_legal_eval（僅限問題明示者）。
 否定語義識別規則（重要）：
 當使用者問句中包含否定詞（如：沒有、不是、未、非、無、不具、排除等）時，必須識別並處理：
 1. 識別否定對象：確定否定詞修飾的是哪個欄位
-2. 填入 negated_fields：將需要否定的欄位路徑加入 negated_fields 列表
+2. 填入 negated_fields：將需要否定的欄位路徑加入 negated_fields 列表，**這個欄位會被填入到qdrant的filter中被設為'must_not'的欄位**
 3. 欄位路徑格式：
    - 一般欄位直接使用欄位名：如 "jyear", "jcase"
    - case_metadata 下的欄位：使用 "case_metadata.欄位名"，如 "case_metadata.first_instance"
@@ -270,12 +276,19 @@ negated_fields: 需要否定的欄位列表（識別否定語義並記錄）
                     # "crime_list",
                     if key in [ "violated_law_articles", "original_indictment_articles", 
                                "changed_indictment_articles", "seized_items", "confiscated_items", 
-                               "changed_law_articles"]:
-                        if isinstance(value, list) and value:
-                            condition = models.FieldCondition(
-                                key=f"metadata.defendants[].{key}",
-                                match=models.MatchAny(any=value)
-                            )
+                               "changed_law_articles", "new_old_law_disputed_article", "mitigation_articles"] and value:
+                        if isinstance(value, list):
+                            for item in value:
+                                if isinstance(item, str):
+                                    cleaned_item = re.sub(r'[（(][^）)]*[）)]', '', item)
+                                    condition = models.FieldCondition(
+                                        key=f"metadata.defendants[].{key}",
+                                        match=models.MatchPhrase(phrase=cleaned_item)
+                                    )
+                            if condition:
+                                must_conditions.append(condition)
+                    elif key in ["crime_list"]:
+                        pass
                     else:
                         # 處理其他字段（字符串、布林值、整數）
                         if isinstance(value, str):
