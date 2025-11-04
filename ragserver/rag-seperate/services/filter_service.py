@@ -29,76 +29,58 @@ class FilterService(IFilterService):
         )
     
     async def extract_filter_conditions(self, user_question: str) -> List[Dict[str, Any]]:
+# 車手 → 「提供（或保管、使用）金融帳戶、提款卡及密碼，負責收受詐得款項並提領或轉交之成員，屬於金流收受與提領的人頭帳戶供應／操作角色（俗稱：車手）」。
         system_prompt = """
-你是法律判決查詢的過濾條件抽取助理。請根據使用者的問題，抽取出過濾條件並輸出 JSON。
+你是法律判決查詢的過濾條件抽取助理。根據使用者問題，抽取出過濾條件並輸出 JSON。
 
-輸出結構(JSON schema)：
+輸出結構：
+- 可包含：confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval。
+- negated_fields：否定欄位列表。
 
-case_metadata: 案件元資料
-first_instance: 是否為地方法院判決
-second_instance: 是否為高等法院判決
-third_instance: 是否為最高法院判決
-case_type: 案件類型（刑法/民法/行政法）
-jtitle_type: 案件標題類型（詐欺/毒品/竊盜/侵占/妨害性自主/傷害/公共危險/槍砲彈藥刀械/偽造文書/其他刑事/債務給付類/侵權行為／損害賠償類/婚姻家庭類/物權類/公司／商事類/勞資爭議類/保險類/其他民事）
-defendants: 被告相關資訊（數組格式，每個元素為一位被告的條件物件）
-可包含但不限於：confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval
-negated_fields: 需要否定的欄位列表（識別否定語義並記錄）
-角色詞彙正規化與展開規則（重要）：
+角色正規化規則：
+- 俗稱/行話角色（如車手、水房、把風、主嫌、掮客、白手套）改寫為中性法律描述，著重具體職責與行為（用動詞、客觀職能，不加未明示細節）。
+- 描述後可附註（俗稱：…），但不得只用俗稱。
+- 範例：
+  - 把風 → 「於犯案過程中負責警戒、通風報信、監看周遭動態以協助犯罪順利實施之成員（俗稱：把風）」。
+  - 水房 → 「集中管理、分拆或匯兌詐得款項，指示或分配資金流向之成員（俗稱：水房）」。
+- 無角色資訊時，不新增 defendants_role。
 
-將使用者輸入中任何俗稱、簡稱或行話角色（例如：車手、水房、把風/望風、車手頭、主嫌、掮客、白手套等）改寫為判決常見的中性法律描述，著重「具體職責與行為」而非標籤。
-展開的 defendants_role 應以行為描述為主，使用動詞與客觀職能，不加入未被使用者明示的細節（如具體時間/地點/金額/次數）。
-可在展開描述後，以（俗稱：…）附註原俗稱以利檢索，但不得只寫俗稱。
-範例（僅示意表述風格，不要求逐字相同）：
-車手 → 「提供（或保管、使用）金融帳戶、提款卡及密碼，負責收受詐得款項並提領或轉交之成員，屬於金流收受與提領的人頭帳戶供應／操作角色（俗稱：車手）」。
-把風/望風 → 「於犯案過程中負責警戒、通風報信、監看周遭動態以協助犯罪順利實施之成員（俗稱：把風/望風）」。
-水房/金流中介 → 「集中管理、分拆或匯兌詐得款項，指示或分配資金流向之成員（俗稱：水房）」。
-若使用者未提供任何角色資訊，則不要新增或推測 defendants_role。
 輸出要求：
+- 僅輸出問題中明示條件；不推測/添加/預設。
+- 未明示欄位不填。
+- 分類類別：defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval（defendants 物件中至少填一至多個；已量化 metadata 不重複填類別；全量化時仍選類別填入）。
+- 分類類別：defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval（defendants 物件中至少填一至多個；已量化 metadata 不重複填類別；全量化時仍選類別填入）。
+- 分類類別：defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval（defendants 物件中至少填一至多個；已量化 metadata 不重複填類別；全量化時仍選類別填入）。
+- 分類類別：defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval（defendants 物件中至少填一至多個；已量化 metadata 不重複填類別；全量化時仍選類別填入）。
+- 分類類別：defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval（defendants 物件中至少填一至多個；已量化 metadata 不重複填類別；全量化時仍選類別填入）。
+- 所有條件須放入 metadata 或類別；不漏掉任何條件。
+- 「未認罪」「否認犯行」「緩刑」等明示時，填 confession_status、has_probation 或 E_legal_eval。
 
-僅輸出實際存在於使用者問題中的過濾條件；不得推測或添加不存在的條件或預設值。
-數組字段使用列表格式，如 ["詐欺", "洗錢"]；布林值用 true/false；字串需加引號。
-僅在問題有明示時，才填寫對應欄位；未提到者不要輸出。
-"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
-"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
-"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
-"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
-"defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"為**分類類別**
-在 defendants 物件中，**分類類別**一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，**分類類別**一定要至少填入一個欄位（可一至多個）。
-在 defendants 物件中，**分類類別**一定要至少填入一個欄位（可一至多個）。
-已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
-已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
-已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
-已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
-已經被量化為defendants的metadata的欄位，不用重複填入**分類類別**的物件中，若問句當中的內容已經全都被量化，一定還是要選擇一個**分類類別**填入。
-若使用者問題含「未認罪」「否認犯行」「緩刑」等，對應填入 confession_status、has_probation 或 E_legal_eval（僅限問題明示者）。
-否定語義識別規則（重要）：
-當使用者問句中包含否定詞（如：沒有、不是、未、非、無、不具、排除等）時，必須識別並處理：
-1. 識別否定對象：確定否定詞修飾的是哪個欄位
-2. 填入 negated_fields：將需要否定的欄位路徑加入 negated_fields 列表，**這個欄位會被填入到qdrant的filter中被設為'must_not'的欄位**
-3. 欄位路徑格式：
-   - 一般欄位直接使用欄位名：如 "jyear", "jcase"
-   - case_metadata 下的欄位：使用 "case_metadata.欄位名"，如 "case_metadata.first_instance"
-   - defendants 下的欄位：使用 "defendants.欄位名"，如 "defendants.has_defense_attorney", "defendants.has_probation"
-4. 同時仍需填入該欄位的值（用於匹配的目標值）
-否定語義範例：
-- "沒有辯護人的案件" → 填入 defendants.has_defense_attorney = true，並在 negated_fields 加入 "defendants.has_defense_attorney"
-- "不是一審判決" → 填入 case_metadata.first_instance = true，並在 negated_fields 加入 "case_metadata.first_instance"
-- "未給予緩刑" → 填入 defendants.has_probation = true，並在 negated_fields 加入 "defendants.has_probation"
-- "不是完全認罪" → 填入 defendants.confession_status = "完全認罪"，並在 negated_fields 加入 "defendants.confession_status"
-僅輸出 JSON，無多餘文字或解釋。
+否定語義規則：
+- 遇否定詞（如沒有、不是、未、非、無、不具、排除）：
+  1. 識別修飾欄位。
+  2. 填 negated_fields：欄位路徑列表（qdrant 'must_not'）。
+  3. 路徑格式：一般 "jyear"；case_metadata "case_metadata.first_instance"；defendants "defendants.has_probation"。
+  4. 同時填該欄位值。
+- 範例：
+  - "沒有辯護人" → defendants.has_defense_attorney = true；negated_fields: ["defendants.has_defense_attorney"]。
+  - "不是一審" → case_metadata.first_instance = true；negated_fields: ["case_metadata.first_instance"]。
+  - "未緩刑" → defendants.has_probation = true；negated_fields: ["defendants.has_probation"]。
+  - "不是完全認罪" → defendants.confession_status = "完全認罪"；negated_fields: ["defendants.confession_status"]。
+
+僅輸出 JSON，無多餘文字。
 """
 # - "defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"一定至少要選一個填入，也可以一至多個填入。且填入的內容需要詳細描述，每個名詞
         response = await self.client.responses.parse(
             # model=self.settings.openai.model,
-            model="gpt-5",
+            model="o3",
             input=[
                 {"role": "system", "content": system_prompt}, 
                 {"role": "user", "content": user_question}
             ],
             text_format=Filter,
-            timeout=120
-            # reasoning_effort="high"
+            timeout=120,
+            reasoning={"effort": "high"}
         )
         result = response.output_parsed
         structured_output = result.model_dump(exclude_none=True, exclude_unset=True)

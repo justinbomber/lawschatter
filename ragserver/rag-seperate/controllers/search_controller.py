@@ -20,15 +20,21 @@ class SearchController:
 
     async def search_documents(self, request: SearchRequest) -> SearchResponse:
         logic = getattr(request, 'logic', "AND")
-        
-        simplified_results = await self.document_search_orchestrator.orchestrate_search(
-            collection=request.collection,
-            query_text=request.query_text,
-            mode=request.mode,
-            limit=request.limit,
-            logic=logic
-        )
-        
+        max_retries = 5
+        retries = 0
+        while retries < max_retries:
+            simplified_results = await self.document_search_orchestrator.orchestrate_search(
+                collection=request.collection,
+                query_text=request.query_text,
+                mode=request.mode,
+                limit=request.limit,
+                logic=logic
+            )
+            retries += 1
+            if len(simplified_results) > 0:
+                break
+            else:
+                continue
         return SearchResponse(
             results=simplified_results,
             total=len(simplified_results),

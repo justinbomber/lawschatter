@@ -61,8 +61,8 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         limit: int,
         logic: str = "AND"
     ) -> List[Dict[str, Any]]:
-        # structured_filter_lst = await self.filter_service.extract_filter_conditions(query_text)
-        # """
+        structured_filter_lst = await self.filter_service.extract_filter_conditions(query_text)
+        """
         structured_filter_lst = [
   {
     "defendants": [
@@ -95,7 +95,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
     ]
   }
 ]
-        # """
+"""
         logger.info("=" * 50)
         logger.info(f"過濾條件:\n{json.dumps(structured_filter_lst, ensure_ascii=False, indent=2)}")
         logger.info("=" * 50)
@@ -141,17 +141,38 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                     field_type = field
                     break
 
-            # 負面條件過濾
+            # 負面條件檢測與轉換
             negative_conditions = self._extract_negative_conditions(reconstructed_query)
-            negative_embeddings = None
-            similarity_threshold = 0.7
+            negative_jids = set()
+            
             if negative_conditions:
-                logger.info(f"啟用通用負面條件過濾，共 {len(negative_conditions)} 個條件")
-                logger.info(f"負面條件列表: {negative_conditions}")
-                negative_embeddings = self.semantic_model.encode(reconstructed_query, convert_to_tensor=True)
-                # negative_embeddings = self.semantic_model.encode(negative_conditions, convert_to_tensor=True)
+                logger.info(f"偵測到負面條件，共 {len(negative_conditions)} 個")
+                logger.info(f"負面條件轉換為正面語句: {negative_conditions}")
+                
+                for neg_condition in negative_conditions:
+                    logger.info(f"搜尋負面條件: '{neg_condition}'")
+                    
+                    for qdrant_filter_sub in qdrant_filter_lst:
+                        neg_config = SearchConfig(
+                            collection=collection,
+                            query_text=neg_condition,
+                            mode=mode,
+                            filter=qdrant_filter_sub,
+                            limit=top_k,
+                            score_threshold=0.95
+                        )
+                        
+                        neg_response = await self.search_service.search(self.qdrant_client, neg_config)
+                        neg_results = self.search_service.flatten_points(neg_response)
+                        
+                        for result in neg_results:
+                            neg_jid = result.get('payload').get('metadata').get('jid')
+                            negative_jids.add(neg_jid)
+                            logger.info(f"負面條件匹配到 jid: {neg_jid}")
+                
+                logger.info(f"負面條件總共匹配到 {len(negative_jids)} 個 jid，將被排除")
             else:
-                logger.info("未檢測到負面條件，跳過語義過濾")
+                logger.info("未檢測到負面條件")
             
             for qdrant_filter_sub in qdrant_filter_lst:
                 config = SearchConfig(
@@ -166,27 +187,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 response = await self.search_service.search(self.qdrant_client, config)
                 results = self.search_service.flatten_points(response)
                 
-                if negative_embeddings is not None:
-                    logger.info(f"對當前條件的 {len(results)} 個結果進行負面條件過濾...")
-                    filtered_results = []
-                    for result in results:
-                        page_content = result.get('payload', {}).get('page_content', '')
-                        jid = result.get('payload', {}).get('metadata', {}).get('jid')
-                        
-                        content_embedding = self.semantic_model.encode(page_content, convert_to_tensor=True)
-                        logger.info(f"---> page_content: {page_content}")
-                        similarities = util.cos_sim(negative_embeddings, content_embedding)
-                        max_similarity = similarities.max().item()
-                        
-                        if max_similarity < similarity_threshold:
-                            filtered_results.append(result)
-                            logger.info(f"✓ 保留 jid={jid}, 相似度={max_similarity:.3f}")
-                        else:
-                            logger.info(f"✗ 排除 jid={jid}, 相似度={max_similarity:.3f} (包含被否定內容)")
-                    
-                    results = filtered_results
-                    logger.info(f"負面條件過濾後剩餘 {len(results)} 個結果")
-                
                 condition_jids = set()
                 print("=" * 50)
                 for result in results:
@@ -200,6 +200,13 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                         jid_score_map[jid] += score
                     else:
                         jid_score_map[jid] = score
+                
+                # 執行 NAND 操作：從正面結果中排除負面條件匹配的 jid
+                if negative_jids:
+                    before_count = len(condition_jids)
+                    condition_jids = condition_jids - negative_jids
+                    after_count = len(condition_jids)
+                    logger.info(f"NAND 過濾: 排除前 {before_count} 個，排除後 {after_count} 個")
                 
                 print("=" * 50)
                 condition_jid_sets.append(condition_jids)
