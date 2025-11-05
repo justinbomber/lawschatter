@@ -130,6 +130,42 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                     field_type = field
                     break
 
+            # 如果沒有找到任何 summary_fields 欄位，使用 scroll 方式獲取資料
+            if field_type is None:
+                logger.info("未找到任何 summary_fields 欄位，使用 scroll 方式獲取資料")
+                
+                structured_filter_scroll = structured_filter.copy()
+                structured_filter_scroll["summary_type"] = "case_fact_summary"
+                qdrant_filter_scroll = self.filter_service.to_qdrant_filter(structured_filter_scroll)
+                qdrant_filter_dict_scroll = qdrant_filter_scroll.model_dump(exclude_none=True) if qdrant_filter_scroll else None
+                
+                logger.info(f"Scroll 過濾條件: {json.dumps(qdrant_filter_dict_scroll, ensure_ascii=False, indent=2)}")
+                
+                scroll_results, _ = await self.qdrant_client.scroll(
+                    collection_name=collection,
+                    scroll_filter=qdrant_filter_scroll,
+                    limit=50,
+                    with_payload=True,
+                    with_vectors=False
+                )
+                
+                condition_jids = set()
+                for record in scroll_results or []:
+                    jid = record.payload.get('metadata', {}).get('jid')
+                    if jid:
+                        condition_jids.add(jid)
+                        score = 1.0
+                        if jid in jid_score_map:
+                            jid_score_map[jid] += score
+                        else:
+                            jid_score_map[jid] = score
+                        logger.info(f"-----> Scroll 取得 jid: {jid}")
+                
+                logger.info(f"Scroll 方式共取得 {len(condition_jids)} 個 jid")
+                condition_jid_sets.append(condition_jids)
+                logger.info(f"條件 'scroll' 結果: {len(condition_jids)} 個 jid")
+                continue
+
             # 負面條件檢測與轉換
             negative_conditions = self._extract_negative_conditions(reconstructed_query)
             negative_jids = set()

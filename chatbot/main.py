@@ -5,7 +5,8 @@ from fastapi import FastAPI
 
 from config.settings import Settings
 from infrastructure.rag_client import RAGClient
-from infrastructure.llm_provider import OpenAIProvider
+from infrastructure.openai_llm_provider import OpenAILLMProvider
+from infrastructure.grok_llm_provider import GrokLLMProvider
 from services.chat_service import ChatService
 from controllers.chat_controller import ChatController
 from controllers.api_router import create_router
@@ -28,7 +29,10 @@ async def lifespan(app: FastAPI):
     settings = Settings()
     
     rag_client = RAGClient(settings)
-    llm_provider = OpenAIProvider(settings)
+    
+    # 默認使用 OpenAI，可切換為 GrokLLMProvider
+    llm_provider = OpenAILLMProvider(settings)
+    # llm_provider = GrokLLMProvider(settings)  # 取消註解以使用 Grok
     
     chat_service = ChatService(
         rag_client=rag_client,
@@ -48,7 +52,7 @@ async def lifespan(app: FastAPI):
     
     logger.info("法律聊天機器人 API 服務已啟動")
     logger.info(f"RAG Server: {settings.rag_server.url}")
-    logger.info(f"LLM Model: {settings.llm.model}")
+    logger.info(f"LLM Provider: {llm_provider.__class__.__name__}")
     
     yield
     

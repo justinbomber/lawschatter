@@ -64,7 +64,7 @@ class ChatService(IChatService):
             "sources": sources,
             "query": question,
             "total_sources": len(sources),
-            "model": self.settings.llm.model
+            "model": self.llm_provider.__class__.__name__
         }
     
     def build_prompt(

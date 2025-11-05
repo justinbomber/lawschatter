@@ -41,6 +41,12 @@ class ISearchService(ABC):
         pass
 
 
+class ILLMExtractionService(ABC):
+    @abstractmethod
+    async def extract_structured_filter(self, user_question: str) -> Dict[str, Any]:
+        pass
+
+
 class IFilterService(ABC):
     @abstractmethod
     async def extract_filter_conditions(self, user_question: str) -> List[Dict[str, Any]]:

@@ -10,9 +10,20 @@ class RAGServerConfig:
 
 
 @dataclass
-class LLMConfig:
+class OpenAIConfig:
     api_key: str
     model: str
+
+
+@dataclass
+class XAIConfig:
+    api_key: str
+    model: str
+    base_url: str
+
+
+@dataclass
+class LLMConfig:
     temperature: float
     max_tokens: int
 
@@ -41,9 +52,18 @@ class Settings:
             timeout=int(os.getenv("RAG_SERVER_TIMEOUT", "30"))
         )
         
+        self.openai = OpenAIConfig(
+            api_key=self._get_required_env("OPENAI_API_KEY"),
+            model=os.getenv("OPENAI_MODEL", "gpt-5")
+        )
+        
+        self.xai = XAIConfig(
+            api_key=os.getenv("XAI_API_KEY", ""),
+            model=os.getenv("XAI_MODEL", "grok-3"),
+            base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1")
+        )
+        
         self.llm = LLMConfig(
-            api_key=self._get_required_env("LLM_API_KEY"),
-            model=os.getenv("LLM_MODEL", "gpt-4"),
             temperature=float(os.getenv("LLM_TEMPERATURE", "0.7")),
             max_tokens=int(os.getenv("LLM_MAX_TOKENS", "2000"))
         )

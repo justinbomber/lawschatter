@@ -10,6 +10,8 @@ from infrastructure.embeddings.sparse_embedding import SparseEmbeddingProvider
 from services.search_service import SearchService
 from services.filter_service import FilterService
 from services.rerank_service import RerankService
+from services.openai_extraction_service import OpenAIExtractionService
+from services.grok_extraction_service import GrokExtractionService
 from services.document_search_orchestrator import DocumentSearchOrchestrator
 from controllers.search_controller import SearchController
 from controllers.api_router import create_router
@@ -40,7 +42,9 @@ async def lifespan(app: FastAPI):
         sparse_provider=sparse_provider,
         settings=settings
     )
-    filter_service = FilterService(settings)
+    llm_extraction_service = OpenAIExtractionService(settings)
+    # llm_extraction_service = GrokExtractionService(settings)
+    filter_service = FilterService(settings, llm_extraction_service)
     rerank_service = RerankService(settings)
     
     document_search_orchestrator = DocumentSearchOrchestrator(

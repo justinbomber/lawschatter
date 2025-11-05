@@ -28,6 +28,13 @@ class CohereConfig:
 
 
 @dataclass
+class XAIConfig:
+    api_key: str
+    model: str
+    base_url: str
+
+
+@dataclass
 class APIConfig:
     host: str
     port: int
@@ -63,6 +70,12 @@ class Settings:
         self.cohere = CohereConfig(
             api_key=os.getenv("COHERE_API_KEY", ""),
             model=os.getenv("COHERE_MODEL", "rerank-v3.5")
+        )
+        
+        self.xai = XAIConfig(
+            api_key=os.getenv("XAI_API_KEY", ""),
+            model=os.getenv("XAI_MODEL", "grok-3"),
+            base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1")
         )
         
         self.api = APIConfig(
