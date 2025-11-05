@@ -67,31 +67,18 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
   {
     "defendants": [
       {
-        "is_full_acquittal": True
+        "is_conviction": False
       }
     ],
     "case_metadata": {
-      "case_type": "刑法",
       "jtitle_type": "詐欺"
     },
-    "defendants_role": "提供或出借金融帳戶資訊供詐欺金流使用、以利收受或轉移被害人款項之成員（俗稱：人頭帳戶／車手）",
-    "summary_type": [
-      "defendants_role"
-    ]
-  },
-  {
-    "defendants": [
-      {
-        "is_full_acquittal": True
-      }
-    ],
-    "case_metadata": {
-      "case_type": "刑法",
-      "jtitle_type": "詐欺"
-    },
-    "A_fact": "被告未能提供與上游或共犯之對話紀錄",
+    "A_fact": "提供帳戶供他人使用（俗稱：提供帳戶）",
     "summary_type": [
       "A_fact"
+    ],
+    "negated_fields": [
+      "defendants.has_conversation_records"
     ]
   }
 ]
@@ -106,7 +93,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         if logic not in ["AND", "OR"]:
             logic = "AND"
         
-        top_k = 15
+        top_k = 50
         
         condition_jid_sets: List[Set[str]] = []
         jid_score_map: Dict[str, float] = {}
@@ -121,6 +108,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             qdrant_filter_case_fact_summary = self.filter_service.to_qdrant_filter(structured_filter_case_fact_summary)
             qdrant_filter_dict = qdrant_filter.model_dump(exclude_none=True) if qdrant_filter else None
             qdrant_filter_lst = [qdrant_filter]
+            # qdrant_filter_lst = [qdrant_filter]
             summary_filter_lst = [qdrant_filter_highlight, qdrant_filter_case_fact_summary]
             
             logger.info("=" * 50)
@@ -148,6 +136,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             condition_jids = set()
             
             if negative_conditions:
+                neg_jid_score_map: Dict[str, float] = {}
                 logger.info(f"偵測到負面條件，共 {len(negative_conditions)} 個")
                 logger.info(f"負面條件轉換為正面語句: {negative_conditions}")
                 
@@ -169,60 +158,99 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                         
                         for result in neg_results:
                             neg_jid = result.get('payload').get('metadata').get('jid')
+                            neg_summary_type = result.get('payload').get('metadata').get('summary_type')
+                            neg_content = result.get('payload').get('page_content')
+                            score = result.get('score', 0)
+                            if neg_jid in neg_jid_score_map:
+                                neg_jid_score_map[neg_jid] += score
+                            else:
+                                neg_jid_score_map[neg_jid] = score
                             negative_jids.add(neg_jid)
-                            logger.info(f"負面條件匹配到 jid: {neg_jid}")
-                
+                            logger.info(f"-----> 負面條件匹配到 jid: {neg_jid}, summary_type: {neg_summary_type}, content: {neg_content}, score: {score}")
+                logger.info("=" * 50)
+                for neg_jid, neg_score in neg_jid_score_map.items():
+                    logger.info(f"-----> negmap總結： jid: {neg_jid}, score_總和: {neg_score}")
+                logger.info("=" * 50)
                 logger.info(f"負面條件總共匹配到 {len(negative_jids)} 個 jid，將被排除")
             else:
                 logger.info("未檢測到負面條件")
             
-                for qdrant_filter_sub in qdrant_filter_lst:
-                    config = SearchConfig(
-                        collection=collection,
-                        query_text=reconstructed_query,
-                        mode=mode,
-                        filter=qdrant_filter_sub,
-                        limit=top_k,
-                        score_threshold=0.95
-                    )
-                    
-                    response = await self.search_service.search(self.qdrant_client, config)
-                    results = self.search_service.flatten_points(response)
-                    
-                    print("=" * 50)
-                    for result in results:
-                        jid = result.get('payload').get('metadata').get('jid')
-                        score = result.get('score', 0)
-                        print(f"-----> score: {score}, jid: {jid}")
-                        
-                        condition_jids.add(jid)
-                        
-                        if jid in jid_score_map:
-                            jid_score_map[jid] += score
-                        else:
-                            jid_score_map[jid] = score
+            # 執行正常搜尋（不論是否有負面條件都要執行）
+            for qdrant_filter_sub in qdrant_filter_lst:
+                config = SearchConfig(
+                    collection=collection,
+                    query_text=reconstructed_query,
+                    mode=mode,
+                    filter=qdrant_filter_sub,
+                    limit=top_k,
+                    score_threshold=0.95
+                )
                 
-                # 執行 NAND 操作：從正面結果中排除負面條件匹配的 jid
+                response = await self.search_service.search(self.qdrant_client, config)
+                results = self.search_service.flatten_points(response)
+                
+                print("=" * 50)
+                for result in results:
+                    jid = result.get('payload').get('metadata').get('jid')
+                    score = result.get('score', 0)
+                    print(f"-----> score: {score}, jid: {jid}")
+                    
+                    condition_jids.add(jid)
+                    
+                    if jid in jid_score_map:
+                        jid_score_map[jid] += score
+                    else:
+                        jid_score_map[jid] = score
             
+            # 執行 NAND 操作：從正面結果中排除負面條件匹配的 jid
             if negative_jids:
                 before_count = len(condition_jids)
                 condition_jids = condition_jids - negative_jids
                 after_count = len(condition_jids)
                 logger.info(f"NAND 過濾: 排除前 {before_count} 個，排除後 {after_count} 個")
-                
                 print("=" * 50)
-                condition_jid_sets.append(condition_jids)
             
+            condition_jid_sets.append(condition_jids)
             logger.info(f"條件 '{field_type or 'general'}' 結果: {len(condition_jids)} 個 jid")
         
         if not condition_jid_sets:
             aggregated_jids_by_logic = set()
-        elif logic == "AND":
-            aggregated_jids_by_logic = set.intersection(*condition_jid_sets) if condition_jid_sets else set()
-        elif logic == "OR":
-            aggregated_jids_by_logic = set.union(*condition_jid_sets) if condition_jid_sets else set()
-        
-        logger.info(f"邏輯聚合 ({logic}) 後的 jid: {len(aggregated_jids_by_logic)} 個")
+            logger.info("沒有搜尋條件，結果為空")
+        elif len(condition_jid_sets) == 1:
+            aggregated_jids_by_logic = condition_jid_sets[0]
+            logger.info(f"單一搜尋條件，直接使用結果: {len(aggregated_jids_by_logic)} 個 jid")
+        else:
+            logger.info(f"多面向搜尋: 共 {len(condition_jid_sets)} 個面向")
+            
+            if logic == "AND":
+                aggregated_jids_by_logic = set.intersection(*condition_jid_sets)
+                logger.info(f"使用 AND 邏輯聚合: {len(aggregated_jids_by_logic)} 個 jid")
+                
+                if len(aggregated_jids_by_logic) == 0:
+                    logger.info("AND 邏輯沒有結果，改用加權評分 + 閾值過濾")
+                    all_jids = set.union(*condition_jid_sets)
+                    min_occurrence = max(1, int(len(condition_jid_sets) * 0.7))
+                    
+                    jid_occurrence_map = {}
+                    for jid in all_jids:
+                        occurrence_count = sum(1 for jid_set in condition_jid_sets if jid in jid_set)
+                        jid_occurrence_map[jid] = occurrence_count
+                        if occurrence_count >= min_occurrence:
+                            aggregated_jids_by_logic.add(jid)
+                    
+                    logger.info(f"加權評分模式: 要求至少出現在 {min_occurrence}/{len(condition_jid_sets)} 個面向中")
+                    logger.info(f"符合閾值的 jid: {len(aggregated_jids_by_logic)} 個")
+                    
+                    top_jids_by_occurrence = sorted(jid_occurrence_map.items(), key=lambda x: x[1], reverse=True)[:5]
+                    logger.info(f"出現次數最多的前 5 個 jid:")
+                    for jid, count in top_jids_by_occurrence:
+                        logger.info(f"  jid: {jid}, 出現在 {count}/{len(condition_jid_sets)} 個面向中，累加分數: {jid_score_map.get(jid, 0):.4f}")
+            elif logic == "OR":
+                aggregated_jids_by_logic = set.union(*condition_jid_sets)
+                logger.info(f"使用 OR 邏輯聚合: {len(aggregated_jids_by_logic)} 個 jid")
+            else:
+                aggregated_jids_by_logic = set.intersection(*condition_jid_sets)
+                logger.info(f"預設使用 AND 邏輯聚合: {len(aggregated_jids_by_logic)} 個 jid")
         
         filtered_jid_scores = {jid: jid_score_map[jid] for jid in aggregated_jids_by_logic if jid in jid_score_map}
         sorted_jids = sorted(filtered_jid_scores.items(), key=lambda x: x[1], reverse=True)[:3]
@@ -232,12 +260,16 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         for jid, total_score in sorted_jids:
             logger.info(f"  jid: {jid}, 累加分數: {total_score}")
         
+        logger.info(f"準備檢索的 jid 集合: {aggregated_jids}")
+        
         detailed_results = await self.filter_service.retrieve_results_by_jids(
             qdrant_client=self.qdrant_client,
             collection=collection,
             limit=limit,
             aggregated_jids=aggregated_jids
         )
+        
+        logger.info(f"retrieve_results_by_jids 返回了 {len(detailed_results)} 條記錄")
         
         simplified_results = []
         for result in detailed_results:
@@ -248,14 +280,14 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 defendants.append(defendant.get('defendant_name'))
             simplified_results.append({
                 "page_content": payload.get('page_content'),
-                "jid": metadata.get('jid'),
+                "jid": metadata.get('jid_full'),
                 "defendants": defendants
             })
 
         logger.info(f"最終搜尋結果: 總共 {len(simplified_results)} 個結果")
         if len(simplified_results) > 0:
             for result in simplified_results:
-                logger.info(f"---> 最終結果: {result.get('jid')}")
+                logger.info(f"---> 最終結果: {result.get('jid')}, content: {result.get('page_content')}")
         else:
             logger.info(f"---> 最終結果: 沒有結果")
         
