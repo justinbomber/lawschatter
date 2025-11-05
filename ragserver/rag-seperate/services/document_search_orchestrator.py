@@ -121,6 +121,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             qdrant_filter_case_fact_summary = self.filter_service.to_qdrant_filter(structured_filter_case_fact_summary)
             qdrant_filter_dict = qdrant_filter.model_dump(exclude_none=True) if qdrant_filter else None
             qdrant_filter_lst = [qdrant_filter]
+            summary_filter_lst = [qdrant_filter_highlight, qdrant_filter_case_fact_summary]
             
             logger.info("=" * 50)
             logger.info(f"Qdrant 過濾條件:\n{json.dumps(qdrant_filter_dict, ensure_ascii=False, indent=2)}")
@@ -144,6 +145,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             # 負面條件檢測與轉換
             negative_conditions = self._extract_negative_conditions(reconstructed_query)
             negative_jids = set()
+            condition_jids = set()
             
             if negative_conditions:
                 logger.info(f"偵測到負面條件，共 {len(negative_conditions)} 個")
@@ -152,7 +154,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 for neg_condition in negative_conditions:
                     logger.info(f"搜尋負面條件: '{neg_condition}'")
                     
-                    for qdrant_filter_sub in qdrant_filter_lst:
+                    for qdrant_filter_sub in summary_filter_lst:
                         neg_config = SearchConfig(
                             collection=collection,
                             query_text=neg_condition,
@@ -174,39 +176,39 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             else:
                 logger.info("未檢測到負面條件")
             
-            for qdrant_filter_sub in qdrant_filter_lst:
-                config = SearchConfig(
-                    collection=collection,
-                    query_text=reconstructed_query,
-                    mode=mode,
-                    filter=qdrant_filter_sub,
-                    limit=top_k,
-                    score_threshold=0.95
-                )
-                
-                response = await self.search_service.search(self.qdrant_client, config)
-                results = self.search_service.flatten_points(response)
-                
-                condition_jids = set()
-                print("=" * 50)
-                for result in results:
-                    jid = result.get('payload').get('metadata').get('jid')
-                    score = result.get('score', 0)
-                    print(f"-----> score: {score}, jid: {jid}")
+                for qdrant_filter_sub in qdrant_filter_lst:
+                    config = SearchConfig(
+                        collection=collection,
+                        query_text=reconstructed_query,
+                        mode=mode,
+                        filter=qdrant_filter_sub,
+                        limit=top_k,
+                        score_threshold=0.95
+                    )
                     
-                    condition_jids.add(jid)
+                    response = await self.search_service.search(self.qdrant_client, config)
+                    results = self.search_service.flatten_points(response)
                     
-                    if jid in jid_score_map:
-                        jid_score_map[jid] += score
-                    else:
-                        jid_score_map[jid] = score
+                    print("=" * 50)
+                    for result in results:
+                        jid = result.get('payload').get('metadata').get('jid')
+                        score = result.get('score', 0)
+                        print(f"-----> score: {score}, jid: {jid}")
+                        
+                        condition_jids.add(jid)
+                        
+                        if jid in jid_score_map:
+                            jid_score_map[jid] += score
+                        else:
+                            jid_score_map[jid] = score
                 
                 # 執行 NAND 操作：從正面結果中排除負面條件匹配的 jid
-                if negative_jids:
-                    before_count = len(condition_jids)
-                    condition_jids = condition_jids - negative_jids
-                    after_count = len(condition_jids)
-                    logger.info(f"NAND 過濾: 排除前 {before_count} 個，排除後 {after_count} 個")
+            
+            if negative_jids:
+                before_count = len(condition_jids)
+                condition_jids = condition_jids - negative_jids
+                after_count = len(condition_jids)
+                logger.info(f"NAND 過濾: 排除前 {before_count} 個，排除後 {after_count} 個")
                 
                 print("=" * 50)
                 condition_jid_sets.append(condition_jids)

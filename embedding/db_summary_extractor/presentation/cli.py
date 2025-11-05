@@ -80,6 +80,7 @@ class CLI:
             extractor=extractor,
             schema_provider=schema_provider,
             decomposer=decomposer,
+            hash_generator=hash_generator,
             sleep_interval=self.config.process.sleep_interval,
         )
         

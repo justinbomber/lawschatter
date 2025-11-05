@@ -15,6 +15,10 @@ class AdjudicateJudgmentFilter(JudgmentFilter):
         if "裁定" in first_20_chars:
             logger.info(f"判決 {judgment.jid} 前20字包含「裁定」，過濾")
             return True
+        
+        if len(judgment.jfull) > 45000:
+            logger.info(f"判決 {judgment.jid} 全文超過 45000 字，過濾")
+            return True
 
         return False
 

@@ -92,4 +92,4 @@ class SummaryRecord:
             content=content,
             defendent_name=None
         )
-
+    

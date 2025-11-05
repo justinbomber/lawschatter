@@ -64,25 +64,18 @@ class ExtractMetadataUseCase:
         return processed_count
     
     def _get_unprocessed_jids(self, jdate: str) -> List[str]:
-        judgment_jids = set(
-            self.judgment_repo.get_judgment_ids_by_date_and_titles(
-                jdate, 
-                self.target_titles
-            )
+        unprocessed = self.judgment_repo.get_unprocessed_jids_by_date_and_titles(
+            jdate,
+            self.target_titles
         )
-        logger.info(f"找到 {len(judgment_jids)} 筆符合條件的判決")
-        
-        metadata_jids = set(
-            self.metadata_repo.get_metadata_ids_by_date(jdate)
-        )
-        
-        unprocessed = list(judgment_jids - metadata_jids)
-        logger.info(f"找到 {len(unprocessed)} 筆未處理的判決")
-        
         return unprocessed
     
     def _process_judgment(self, jid: str, jdate: str) -> bool:
         logger.info(f"處理判決: {jid}")
+        
+        if self.metadata_repo.has_metadata(jid):
+            logger.info(f"跳過判決 {jid}（已存在 metadata）")
+            return False
         
         attempt = 0
         
@@ -91,6 +84,9 @@ class ExtractMetadataUseCase:
             try:
                 if attempt > 1:
                     logger.info(f"重新查詢資料並嘗試處理判決 (第 {attempt} 次): {jid}")
+                
+                if attempt == 1:
+                    self.metadata_repo.insert_lock_record(jid, jdate)
                 
                 judgment = self.judgment_repo.get_judgment(jid)
                 
@@ -110,9 +106,9 @@ class ExtractMetadataUseCase:
                 print(metadata_record)
                 print("================================================")
                 
-                self.metadata_repo.save_metadata(metadata_record)
+                self.metadata_repo.update_metadata(metadata_record)
                 
-                logger.info(f"成功處理並插入 metadata: {jid}")
+                logger.info(f"成功處理並更新 metadata: {jid}")
                 return True
                 
             except Exception as e:

@@ -32,6 +32,18 @@ class SummaryRepository(ABC):
         pass
     
     @abstractmethod
+    def has_summary_for_jid(self, jid: str) -> bool:
+        pass
+    
+    @abstractmethod
+    def insert_lock_record(self, jid: str, jdate: str, lock_point_id: str) -> None:
+        pass
+    
+    @abstractmethod
+    def delete_lock_record(self, lock_point_id: str) -> None:
+        pass
+    
+    @abstractmethod
     def save_summary(self, summary: SummaryRecord) -> None:
         pass
     

@@ -20,6 +20,14 @@ class JudgmentRepository(ABC):
         target_titles: List[str]
     ) -> List[str]:
         pass
+    
+    @abstractmethod
+    def get_unprocessed_jids_by_date_and_titles(
+        self,
+        jdate: str,
+        target_titles: List[str]
+    ) -> List[str]:
+        pass
 
 
 class MetadataRepository(ABC):
@@ -29,6 +37,18 @@ class MetadataRepository(ABC):
         pass
     
     @abstractmethod
+    def has_metadata(self, jid: str) -> bool:
+        pass
+    
+    @abstractmethod
+    def insert_lock_record(self, jid: str, jdate: str) -> None:
+        pass
+    
+    @abstractmethod
     def save_metadata(self, metadata: MetadataRecord) -> None:
+        pass
+    
+    @abstractmethod
+    def update_metadata(self, metadata: MetadataRecord) -> None:
         pass
 

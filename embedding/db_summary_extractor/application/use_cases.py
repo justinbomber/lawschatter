@@ -8,6 +8,7 @@ from ..domain import (
     SummaryExtractor,
     SchemaProvider,
     SummaryDecomposer,
+    HashGenerator,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ class ExtractSummaryUseCase:
         extractor: SummaryExtractor,
         schema_provider: SchemaProvider,
         decomposer: SummaryDecomposer,
+        hash_generator: HashGenerator,
         sleep_interval: int = 60,
     ):
         self.judgment_repo = judgment_repo
@@ -31,6 +33,7 @@ class ExtractSummaryUseCase:
         self.extractor = extractor
         self.schema_provider = schema_provider
         self.decomposer = decomposer
+        self.hash_generator = hash_generator
         self.sleep_interval = sleep_interval
     
     def execute(self) -> None:
@@ -62,6 +65,12 @@ class ExtractSummaryUseCase:
     def _process_judgment(self, jid: str, jdate: str) -> bool:
         logger.info(f"處理判決: {jid}")
         
+        if self.summary_repo.has_summary_for_jid(jid):
+            logger.info(f"跳過判決 {jid}（已存在 summary 或正在被處理）")
+            return False
+        
+        lock_point_id = self.hash_generator.generate(jid)
+        
         attempt = 0
         
         while True:
@@ -69,6 +78,9 @@ class ExtractSummaryUseCase:
             try:
                 if attempt > 1:
                     logger.info(f"重新查詢資料並嘗試處理判決 (第 {attempt} 次): {jid}")
+                
+                if attempt == 1:
+                    self.summary_repo.insert_lock_record(jid, jdate, lock_point_id)
                 
                 judgment = self.judgment_repo.get_judgment(jid)
                 
@@ -83,6 +95,8 @@ class ExtractSummaryUseCase:
                 
                 for record in summary_records:
                     self.summary_repo.save_summary(record)
+                
+                self.summary_repo.delete_lock_record(lock_point_id)
                 
                 logger.info(f"成功處理並插入 {len(summary_records)} 筆 summary: {jid}")
                 return True
