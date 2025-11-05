@@ -1,6 +1,8 @@
 import logging
+import signal
+import sys
 import time
-from typing import List, Dict
+from typing import List, Dict, Optional
 from ..domain import (
     JudgmentRepository,
     MetadataRepository,
@@ -35,6 +37,20 @@ class ExtractSummaryUseCase:
         self.decomposer = decomposer
         self.hash_generator = hash_generator
         self.sleep_interval = sleep_interval
+        self.current_lock_point_id: Optional[str] = None
+        self._setup_signal_handlers()
+    
+    def _setup_signal_handlers(self) -> None:
+        signal.signal(signal.SIGINT, self._handle_shutdown)
+        signal.signal(signal.SIGTERM, self._handle_shutdown)
+    
+    def _handle_shutdown(self, signum, frame) -> None:
+        logger.warning(f"接收到停止信號 {signum}，準備清理並退出")
+        if self.current_lock_point_id:
+            logger.info(f"清理當前處理的 lock: {self.current_lock_point_id}")
+            self.summary_repo.delete_lock_record(self.current_lock_point_id)
+        logger.info("清理完成，退出程式")
+        sys.exit(0)
     
     def execute(self) -> None:
         logger.info("開始執行 Summary 提取流程")
@@ -70,6 +86,8 @@ class ExtractSummaryUseCase:
             return False
         
         lock_point_id = self.hash_generator.generate(jid)
+        self.current_lock_point_id = lock_point_id
+        lock_inserted = False
         
         attempt = 0
         
@@ -81,6 +99,7 @@ class ExtractSummaryUseCase:
                 
                 if attempt == 1:
                     self.summary_repo.insert_lock_record(jid, jdate, lock_point_id)
+                    lock_inserted = True
                 
                 judgment = self.judgment_repo.get_judgment(jid)
                 
@@ -99,6 +118,7 @@ class ExtractSummaryUseCase:
                 self.summary_repo.delete_lock_record(lock_point_id)
                 
                 logger.info(f"成功處理並插入 {len(summary_records)} 筆 summary: {jid}")
+                self.current_lock_point_id = None
                 return True
                 
             except Exception as e:
@@ -112,5 +132,8 @@ class ExtractSummaryUseCase:
                     continue
                 else:
                     logger.error(f"處理判決時發生錯誤，跳過此判決: {jid}. 錯誤: {error_msg}")
+                    if lock_inserted:
+                        self.summary_repo.delete_lock_record(lock_point_id)
+                    self.current_lock_point_id = None
                     return False
 

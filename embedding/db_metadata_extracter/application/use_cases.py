@@ -1,5 +1,7 @@
 import logging
-from typing import List
+import signal
+import sys
+from typing import List, Optional
 from ..domain import (
     JudgmentRepository,
     MetadataRepository,
@@ -31,6 +33,20 @@ class ExtractMetadataUseCase:
         self.schema_provider = schema_provider
         self.target_titles = target_titles
         self.include_adjudicate = include_adjudicate
+        self.current_processing_jid: Optional[str] = None
+        self._setup_signal_handlers()
+    
+    def _setup_signal_handlers(self) -> None:
+        signal.signal(signal.SIGINT, self._handle_shutdown)
+        signal.signal(signal.SIGTERM, self._handle_shutdown)
+    
+    def _handle_shutdown(self, signum, frame) -> None:
+        logger.warning(f"接收到停止信號 {signum}，準備清理並退出")
+        if self.current_processing_jid:
+            logger.info(f"清理當前處理的 jid: {self.current_processing_jid}")
+            self.metadata_repo.delete_lock_record(self.current_processing_jid)
+        logger.info("清理完成，退出程式")
+        sys.exit(0)
     
     def execute(self) -> int:
         logger.info("開始執行 Metadata 提取流程")
@@ -77,6 +93,8 @@ class ExtractMetadataUseCase:
             logger.info(f"跳過判決 {jid}（已存在 metadata）")
             return False
         
+        self.current_processing_jid = jid
+        lock_inserted = False
         attempt = 0
         
         while True:
@@ -87,12 +105,15 @@ class ExtractMetadataUseCase:
                 
                 if attempt == 1:
                     self.metadata_repo.insert_lock_record(jid, jdate)
+                    lock_inserted = True
                 
                 judgment = self.judgment_repo.get_judgment(jid)
                 
                 if not self.include_adjudicate:
                     if self.filter_service.should_ignore(judgment):
                         logger.info(f"跳過判決 {jid}（符合過濾條件）")
+                        self.metadata_repo.delete_lock_record(jid)
+                        self.current_processing_jid = None
                         return False
                 
                 schema = self.schema_provider.get_schema()
@@ -109,6 +130,7 @@ class ExtractMetadataUseCase:
                 self.metadata_repo.update_metadata(metadata_record)
                 
                 logger.info(f"成功處理並更新 metadata: {jid}")
+                self.current_processing_jid = None
                 return True
                 
             except Exception as e:
@@ -122,5 +144,8 @@ class ExtractMetadataUseCase:
                     continue
                 else:
                     logger.error(f"處理判決時發生錯誤，跳過此判決: {jid}. 錯誤: {error_msg}")
+                    if lock_inserted:
+                        self.metadata_repo.delete_lock_record(jid)
+                    self.current_processing_jid = None
                     return False
 

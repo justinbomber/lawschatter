@@ -137,6 +137,10 @@ class SupabaseMetadataRepository(MetadataRepository):
         }
         self.client.schema(self.schema_name).table("judgment_metadata").upsert(record_data).execute()
     
+    def delete_lock_record(self, jid: str) -> None:
+        logger.info(f"刪除鎖定記錄: {jid}")
+        self.client.schema(self.schema_name).table("judgment_metadata").delete().eq("jid", jid).execute()
+    
     def save_metadata(self, metadata: MetadataRecord) -> None:
         logger.info(f"儲存 metadata: {metadata.jid}")
         jdate_int = int(metadata.jdate) if isinstance(metadata.jdate, str) else metadata.jdate

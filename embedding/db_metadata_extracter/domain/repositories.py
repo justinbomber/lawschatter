@@ -45,6 +45,10 @@ class MetadataRepository(ABC):
         pass
     
     @abstractmethod
+    def delete_lock_record(self, jid: str) -> None:
+        pass
+    
+    @abstractmethod
     def save_metadata(self, metadata: MetadataRecord) -> None:
         pass
     
