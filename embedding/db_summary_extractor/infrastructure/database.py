@@ -126,7 +126,7 @@ class SupabaseSummaryRepository(SummaryRepository):
             # "summary_type": "lock",
             "content": "",
             "embedded_1": True,
-            "embedded_2": True
+            "embedding_2": True
         }
         self.client.schema(self.schema_name).table("judgment_summary").upsert(record_data).execute()
     
