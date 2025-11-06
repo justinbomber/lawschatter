@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './Login.css';
-import Footer from './Footer';
-import { useAuth } from '../contexts/AuthContext';
+import Footer from './Footer.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { authAPI } from '../api';
 
 function Login({ onLogin, onSwitchToRegister }) {

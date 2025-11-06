@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './App.css';
-import Sidebar from './components/Sidebar';
-import ChatArea from './components/ChatArea';
-import SettingsPopup from './components/SettingsPopup';
-import Login from './components/Login';
-import Register from './components/Register';
+import Sidebar from './components/Sidebar.jsx';
+import ChatArea from './components/ChatArea.jsx';
+import SettingsPopup from './components/SettingsPopup.jsx';
+import Login from './components/Login.jsx';
+import Register from './components/Register.jsx';
 import { chatAPI } from './api/chat';
 
 function App() {

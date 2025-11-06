@@ -1,0 +1,94 @@
+{
+  "jid": "MLDM,113,訴,549,20250526,1",
+  "jid_full": "臺灣苗栗地方法院刑事判決113年度訴字第549號",
+  "jyear": 113,
+  "jcase": "訴",
+  "jno": "549",
+  "jdate": 20250526,
+  "jtitle": "加重詐欺等",
+  "case_type": "",
+  "jtitle_type": "",
+  "jfull": "",
+  "defendants": [
+    {
+      "defendant_name": "賴偉成",
+      "has_defense_attorney": true,
+      "defense_attorney_name": "賴奐宇",
+      "indictment_changed": true,
+      "original_indictment_articles": [
+        "刑法第339條之4第1項第2款"
+      ],
+      "changed_indictment_articles": [
+        "刑法第339條第1項"
+      ],
+      "has_new_old_law_issue": true,
+      "new_old_law_disputed_article": "修正前洗錢防制法第14條第1項與修正後洗錢防制法第19條第1項、第23條第3項",
+      "has_contradictory_statements": false,
+      "confession_status": "完全否認",
+      "is_full_acquittal": false,
+      "is_acquittal_due_to_insufficient_evidence": false,
+      "is_other_verdict": false,
+      "is_conviction": true,
+      "crime_list": [
+        "詐欺取財罪",
+        "洗錢罪"
+      ],
+      "violated_law_articles": [
+        "中華民國刑法第339條第1項",
+        "刑法第55條",
+        "修正前洗錢防制法第14條第1項",
+        "刑法第38條之1第1項前段",
+        "刑法第38條之1第3項"
+      ],
+      "is_fixed_term_imprisonment": true,
+      "fixed_term_years": 0,
+      "fixed_term_months": 10,
+      "is_life_imprisonment": false,
+      "is_death_penalty": false,
+      "is_detention": false,
+      "detention_days": 0,
+      "has_concurrent_fine": true,
+      "fine_amount": 50000,
+      "may_convert_to_fine": false,
+      "has_probation": false,
+      "probation_period": "",
+      "has_mitigation_articles": false,
+      "mitigation_articles": "",
+      "has_settlement": false,
+      "settlement_amount": 0,
+      "is_settlement_fulfilled": false,
+      "is_settlement_installment": false,
+      "has_witnesses": true,
+      "witness_testified_in_investigation": true,
+      "witness_testified_in_trial": true,
+      "has_seized_items": false,
+      "seized_items": [],
+      "has_confiscated_items": true,
+      "confiscated_items": [
+        "未扣案之犯罪所得新臺幣拾柒萬元沒收，於全部或一部不能沒收或不宜執行沒收時，追徵其價額"
+      ],
+      "is_continuous_offense": "是",
+      "is_first_instance": true,
+      "is_second_instance": false,
+      "is_third_instance": false,
+      "has_previous_instance": false,
+      "is_reversed_and_remanded": false,
+      "is_sentence_reduced": false,
+      "is_sentence_increased": false,
+      "is_law_article_changed_from_previous": false,
+      "changed_law_articles": [],
+      "previous_instance_confession_status": "不適用",
+      "current_instance_confession_status": "完全否認",
+      "has_inconsistent_statements_with_previous": false,
+      "statement_difference_description": ""
+    }
+  ],
+  "case_metadata": {
+    "first_instance": true,
+    "second_instance": false,
+    "third_instance": false,
+    "case_type": "刑法",
+    "chunk_overview": "被告賴偉成與LINE暱稱「財富列車」之不詳詐欺者勾結，約定被告以「招財貓兼職幣商」身份面交收款後轉入USDT至指定電子錢包，以隱匿詐欺所得去向。告訴人高瑋彤依指示兩度面交共17萬元，後無法提領始知受騙。法院認定被告與詐欺者有犯意聯絡、行為分擔，屬共同正犯，詐欺與洗錢間屬接續犯，依刑法第55條從一重之修正前洗錢防制法第14條第1項處斷，判有期徒刑10月，併科罰金5萬元，並沒收犯罪所得17萬元。就洗錢新舊法比較後適用舊法；被告否認犯行，無自白減刑。",
+    "jtitle_type": "詐欺"
+  }
+}

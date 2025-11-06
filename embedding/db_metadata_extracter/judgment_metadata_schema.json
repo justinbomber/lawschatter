@@ -361,6 +361,10 @@
             ],
             "description": "案件類型，只能為：刑法，民法，行政法其中一種"
           },
+          "chunk_overview": {
+            "type": "string",
+            "description": "本chunk的文字概要，總結300字"
+          },
           "jtitle_type": {
             "type": "string",
             "enum": [
@@ -390,6 +394,7 @@
           "first_instance",
           "second_instance",
           "third_instance",
+          "chunk_overview",
           "case_type",
           "jtitle_type"
         ],

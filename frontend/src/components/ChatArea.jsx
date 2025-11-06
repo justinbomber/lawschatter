@@ -4,8 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import './ChatArea.css';
-import RagSelector from './RagSelector';
-import ReferencePanel from './ReferencePanel';
+import RagSelector from './RagSelector.jsx';
+import ReferencePanel from './ReferencePanel.jsx';
 
 const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
   const { t } = useTranslation();

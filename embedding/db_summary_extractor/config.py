@@ -47,7 +47,7 @@ class AppConfig:
     schema: SchemaConfig
     process: ProcessConfig
     ai_provider: str = "openai"
-    output_dir=str
+    output_dir: str = ".\\output"
     
     @staticmethod
     def from_env() -> "AppConfig":
