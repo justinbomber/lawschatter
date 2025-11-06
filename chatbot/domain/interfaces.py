@@ -1,11 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List, Dict, Any, AsyncGenerator
 from entities.models import RAGSearchRequest, RAGSearchResponse, ChatMessage
 
 
 class IRAGClient(ABC):
     @abstractmethod
     async def search(self, request: RAGSearchRequest) -> RAGSearchResponse:
+        pass
+    
+    @abstractmethod
+    async def search_stream(self, request: RAGSearchRequest) -> AsyncGenerator[Dict[str, Any], None]:
         pass
     
     @abstractmethod
@@ -21,6 +25,15 @@ class ILLMProvider(ABC):
         temperature: float,
         max_tokens: int
     ) -> str:
+        pass
+    
+    @abstractmethod
+    async def generate_response_stream(
+        self,
+        messages: List[ChatMessage],
+        temperature: float,
+        max_tokens: int
+    ) -> AsyncGenerator[str, None]:
         pass
     
     @abstractmethod
@@ -40,6 +53,19 @@ class IChatService(ABC):
         temperature: float,
         max_tokens: int
     ) -> Dict[str, Any]:
+        pass
+    
+    @abstractmethod
+    async def process_chat_stream(
+        self,
+        question: str,
+        collection: str,
+        mode: str,
+        limit: int,
+        score_threshold: float,
+        temperature: float,
+        max_tokens: int
+    ) -> AsyncGenerator[Dict[str, Any], None]:
         pass
     
     @abstractmethod

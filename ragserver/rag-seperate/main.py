@@ -42,8 +42,8 @@ async def lifespan(app: FastAPI):
         sparse_provider=sparse_provider,
         settings=settings
     )
-    llm_extraction_service = OpenAIExtractionService(settings)
-    # llm_extraction_service = GrokExtractionService(settings)
+    # llm_extraction_service = OpenAIExtractionService(settings)
+    llm_extraction_service = GrokExtractionService(settings)
     filter_service = FilterService(settings, llm_extraction_service)
     rerank_service = RerankService(settings)
     

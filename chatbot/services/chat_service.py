@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, AsyncGenerator
 from domain.interfaces import IChatService, IRAGClient, ILLMProvider
 from entities.models import RAGSearchRequest, ChatMessage
 from config.settings import Settings
@@ -35,7 +35,8 @@ class ChatService(IChatService):
             query_text=question,
             mode=mode,
             limit=limit,
-            score_threshold=score_threshold
+            score_threshold=score_threshold,
+            streaming=False
         )
         
         rag_response = await self.rag_client.search(rag_request)
@@ -186,4 +187,63 @@ class ChatService(IChatService):
         ]
         
         return messages
+    
+    async def process_chat_stream(
+        self,
+        question: str,
+        collection: str,
+        mode: str,
+        limit: int,
+        score_threshold: float,
+        temperature: float,
+        max_tokens: int
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        logger.info(f"處理聊天請求 (串流): {question}")
+        
+        rag_request = RAGSearchRequest(
+            collection=collection,
+            query_text=question,
+            mode=mode,
+            limit=limit,
+            score_threshold=score_threshold,
+            streaming=True
+        )
+        
+        sources = []
+        async for chunk in self.rag_client.search_stream(rag_request):
+            if "status" in chunk:
+                yield {"type": "rag_status", "status": chunk["status"]}
+            elif "type" in chunk and chunk["type"] == "final_results":
+                results = chunk.get("results", [])
+                logger.info(f"RAG 搜尋完成，共 {len(results)} 筆結果")
+                
+                sources = [
+                    {
+                        "page_content": result.get("page_content"),
+                        "jid": result.get("jid"),
+                        "defendants": result.get("defendants", [])
+                    }
+                    for result in results
+                ]
+                
+                # yield {"type": "rag_complete", "total_sources": len(sources)}
+        
+        messages = self.build_prompt(question, sources)
+        
+        yield {"type": "llm_start", "status": "已獲取資料，開始準備回答"}
+        
+        async for token in self.llm_provider.generate_response_stream(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens
+        ):
+            yield {"type": "llm_token", "content": token}
+        
+        yield {
+            "type": "complete",
+            "sources": sources,
+            "query": question,
+            "total_sources": len(sources),
+            "model": self.llm_provider.__class__.__name__
+        }
 

@@ -2,6 +2,7 @@
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import Settings
 from infrastructure.rag_client import RAGClient
@@ -31,8 +32,8 @@ async def lifespan(app: FastAPI):
     rag_client = RAGClient(settings)
     
     # 默認使用 OpenAI，可切換為 GrokLLMProvider
-    llm_provider = OpenAILLMProvider(settings)
-    # llm_provider = GrokLLMProvider(settings)  # 取消註解以使用 Grok
+    # llm_provider = OpenAILLMProvider(settings)
+    llm_provider = GrokLLMProvider(settings)  # 取消註解以使用 Grok
     
     chat_service = ChatService(
         rag_client=rag_client,
@@ -64,6 +65,14 @@ app = FastAPI(
     description="提供基於 RAG 的法律問答服務",
     version="1.0.0",
     lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

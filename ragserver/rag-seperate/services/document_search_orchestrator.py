@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, AsyncGenerator
 from sentence_transformers import SentenceTransformer, util
 import re
 from domain.interfaces import IDocumentSearchOrchestrator, ISearchService, IFilterService, IQdrantClient
@@ -53,7 +53,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         
         return negative_conditions
     
-    async def orchestrate_search(
+    async def _execute_search_logic(
         self,
         collection: str,
         query_text: str,
@@ -62,27 +62,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         logic: str = "AND"
     ) -> List[Dict[str, Any]]:
         structured_filter_lst = await self.filter_service.extract_filter_conditions(query_text)
-        """
-        structured_filter_lst = [
-  {
-    "defendants": [
-      {
-        "is_conviction": False
-      }
-    ],
-    "case_metadata": {
-      "jtitle_type": "詐欺"
-    },
-    "A_fact": "提供帳戶供他人使用（俗稱：提供帳戶）",
-    "summary_type": [
-      "A_fact"
-    ],
-    "negated_fields": [
-      "defendants.has_conversation_records"
-    ]
-  }
-]
-"""
+        
         logger.info("=" * 50)
         logger.info(f"過濾條件:\n{json.dumps(structured_filter_lst, ensure_ascii=False, indent=2)}")
         logger.info("=" * 50)
@@ -101,14 +81,13 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         for structured_filter in structured_filter_lst:
             qdrant_filter = self.filter_service.to_qdrant_filter(structured_filter)
             structured_filter_highlight = structured_filter.copy()
-            structured_filter_highlight["summary_type"] = "case_highlights"
+            structured_filter_highlight["summary_type"] = ["case_highlights"]
             qdrant_filter_highlight = self.filter_service.to_qdrant_filter(structured_filter_highlight)
             structured_filter_case_fact_summary = structured_filter.copy()
-            structured_filter_case_fact_summary["summary_type"] = "case_fact_summary"
+            structured_filter_case_fact_summary["summary_type"] = ["case_fact_summary"]
             qdrant_filter_case_fact_summary = self.filter_service.to_qdrant_filter(structured_filter_case_fact_summary)
             qdrant_filter_dict = qdrant_filter.model_dump(exclude_none=True) if qdrant_filter else None
             qdrant_filter_lst = [qdrant_filter]
-            # qdrant_filter_lst = [qdrant_filter]
             summary_filter_lst = [qdrant_filter_highlight, qdrant_filter_case_fact_summary]
             
             logger.info("=" * 50)
@@ -116,7 +95,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             logger.info("=" * 50)
             logger.info(f"搜尋請求: collection={collection}, query='{query_text}', mode={mode}, logic={logic}")
             logger.info("=" * 50)
-
+            
             reconstructed_query = ""
             field_type = None
             for field in summary_fields:
@@ -129,13 +108,12 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                         reconstructed_query = extracted_value
                     field_type = field
                     break
-
-            # 如果沒有找到任何 summary_fields 欄位，使用 scroll 方式獲取資料
+            
             if field_type is None:
                 logger.info("未找到任何 summary_fields 欄位，使用 scroll 方式獲取資料")
                 
                 structured_filter_scroll = structured_filter.copy()
-                structured_filter_scroll["summary_type"] = "case_fact_summary"
+                structured_filter_scroll["summary_type"] = ["case_fact_summary"]
                 qdrant_filter_scroll = self.filter_service.to_qdrant_filter(structured_filter_scroll)
                 qdrant_filter_dict_scroll = qdrant_filter_scroll.model_dump(exclude_none=True) if qdrant_filter_scroll else None
                 
@@ -165,8 +143,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 condition_jid_sets.append(condition_jids)
                 logger.info(f"條件 'scroll' 結果: {len(condition_jids)} 個 jid")
                 continue
-
-            # 負面條件檢測與轉換
+            
             negative_conditions = self._extract_negative_conditions(reconstructed_query)
             negative_jids = set()
             condition_jids = set()
@@ -211,7 +188,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             else:
                 logger.info("未檢測到負面條件")
             
-            # 執行正常搜尋（不論是否有負面條件都要執行）
             for qdrant_filter_sub in qdrant_filter_lst:
                 config = SearchConfig(
                     collection=collection,
@@ -238,7 +214,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                     else:
                         jid_score_map[jid] = score
             
-            # 執行 NAND 操作：從正面結果中排除負面條件匹配的 jid
             if negative_jids:
                 before_count = len(condition_jids)
                 condition_jids = condition_jids - negative_jids
@@ -319,7 +294,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 "jid": metadata.get('jid_full'),
                 "defendants": defendants
             })
-
+        
         logger.info(f"最終搜尋結果: 總共 {len(simplified_results)} 個結果")
         if len(simplified_results) > 0:
             for result in simplified_results:
@@ -328,4 +303,41 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             logger.info(f"---> 最終結果: 沒有結果")
         
         return simplified_results
+    
+    async def orchestrate_search(
+        self,
+        collection: str,
+        query_text: str,
+        mode: str,
+        limit: int,
+        logic: str = "AND"
+    ) -> List[Dict[str, Any]]:
+        return await self._execute_search_logic(
+            collection=collection,
+            query_text=query_text,
+            mode=mode,
+            limit=limit,
+            logic=logic
+        )
+    
+    async def orchestrate_search_stream(
+        self,
+        collection: str,
+        query_text: str,
+        mode: str,
+        limit: int,
+        logic: str = "AND"
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        yield {"status": "正在重組你的訊息，並嘗試理解問題"}
+        
+        results = await self._execute_search_logic(
+            collection=collection,
+            query_text=query_text,
+            mode=mode,
+            limit=limit,
+            logic=logic
+        )
+        
+        yield {"status": "完成向量搜尋"}
+        yield {"type": "final_results", "results": results}
 

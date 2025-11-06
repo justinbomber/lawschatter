@@ -10,6 +10,7 @@ class ChatRequest(BaseModel):
     score_threshold: Optional[float] = Field(None, description="最低分數閾值", ge=0, le=1)
     temperature: Optional[float] = Field(None, description="LLM 溫度參數", ge=0, le=2)
     max_tokens: Optional[int] = Field(None, description="LLM 最大生成 token 數", ge=1)
+    streaming: bool = Field(False, description="是否使用 SSE 串流回復")
 
 
 class RAGSearchRequest(BaseModel):
@@ -18,6 +19,7 @@ class RAGSearchRequest(BaseModel):
     mode: str
     limit: int
     score_threshold: float
+    streaming: bool = False
 
 
 class RAGSearchResult(BaseModel):

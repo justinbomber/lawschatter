@@ -1,4 +1,5 @@
 import logging
+from typing import Dict, Any, AsyncGenerator
 from domain.interfaces import IChatService, IRAGClient, ILLMProvider
 from entities.models import ChatRequest, ChatResponse, HealthStatus
 from config.settings import Settings
@@ -38,6 +39,25 @@ class ChatController:
         )
         
         return ChatResponse(**result)
+    
+    async def chat_completion_stream(self, request: ChatRequest) -> AsyncGenerator[Dict[str, Any], None]:
+        collection = request.collection or self.settings.rag_search.collection
+        mode = request.mode or self.settings.rag_search.mode
+        limit = request.limit or self.settings.rag_search.limit
+        score_threshold = request.score_threshold or self.settings.rag_search.score_threshold
+        temperature = request.temperature or self.settings.llm.temperature
+        max_tokens = request.max_tokens or self.settings.llm.max_tokens
+        
+        async for chunk in self.chat_service.process_chat_stream(
+            question=request.question,
+            collection=collection,
+            mode=mode,
+            limit=limit,
+            score_threshold=score_threshold,
+            temperature=temperature,
+            max_tokens=max_tokens
+        ):
+            yield chunk
     
     async def health_check(self) -> HealthStatus:
         rag_connection = "connected"

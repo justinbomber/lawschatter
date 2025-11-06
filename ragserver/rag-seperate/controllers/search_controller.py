@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, AsyncGenerator
 from entities.models import SearchRequest, SearchResponse, CollectionInfo, HealthStatus
 from domain.interfaces import IQdrantClient, IDocumentSearchOrchestrator
 from config.settings import Settings
@@ -42,6 +42,17 @@ class SearchController:
             mode=request.mode,
             collection=request.collection
         )
+    
+    async def search_documents_stream(self, request: SearchRequest) -> AsyncGenerator[Dict[str, Any], None]:
+        logic = getattr(request, 'logic', "AND")
+        async for chunk in self.document_search_orchestrator.orchestrate_search_stream(
+            collection=request.collection,
+            query_text=request.query_text,
+            mode=request.mode,
+            limit=request.limit,
+            logic=logic
+        ):
+            yield chunk
     
     async def list_collections(self) -> Dict[str, Any]:
         collections = await self.qdrant_client.get_collections()

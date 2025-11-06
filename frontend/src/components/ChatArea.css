@@ -46,6 +46,169 @@
   }
 }
 
+/* 狀態訊息樣式（灰色、小字） */
+.status-messages {
+  margin-bottom: 8px;
+}
+
+.status-message {
+  color: #999;
+  font-size: 0.85em;
+  margin: 4px 0;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+/* 串流游標動畫 */
+.streaming-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  color: #10a37f;
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Markdown 內容樣式 */
+.message-text h1,
+.message-text h2,
+.message-text h3,
+.message-text h4,
+.message-text h5,
+.message-text h6 {
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.message-text h1 {
+  font-size: 1.6em;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 6px;
+}
+
+.message-text h2 {
+  font-size: 1.4em;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 4px;
+}
+
+.message-text h3 {
+  font-size: 1.2em;
+}
+
+.message-text h4 {
+  font-size: 1.05em;
+}
+
+.message-text p {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.message-text ul,
+.message-text ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.message-text li {
+  margin: 2px 0;
+  line-height: 1.5;
+}
+
+.message-text code {
+  background-color: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  color: #e11d48;
+}
+
+.message-text pre {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.message-text pre code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.9em;
+}
+
+.message-text blockquote {
+  border-left: 3px solid #10a37f;
+  padding-left: 12px;
+  margin: 8px 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.message-text table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.message-text th,
+.message-text td {
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-text th {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
+.message-text a {
+  color: #10a37f;
+  text-decoration: none;
+}
+
+.message-text a:hover {
+  text-decoration: underline;
+}
+
+.message-text hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 12px 0;
+}
+
+/* 移除第一個元素的上邊距和最後一個元素的下邊距 */
+.message-text > *:first-child {
+  margin-top: 0;
+}
+
+.message-text > *:last-child {
+  margin-bottom: 0;
+}
+
+.message-text strong {
+  font-weight: 600;
+}
+
+.message-text em {
+  font-style: italic;
+}
+
 .chat-main-content {
   flex: 1;
   display: flex;

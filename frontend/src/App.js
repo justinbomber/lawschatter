@@ -6,6 +6,7 @@ import ChatArea from './components/ChatArea';
 import SettingsPopup from './components/SettingsPopup';
 import Login from './components/Login';
 import Register from './components/Register';
+import { chatAPI } from './api/chat';
 
 function App() {
   const { t } = useTranslation();
@@ -90,75 +91,84 @@ function App() {
     };
     
     setMessages(prev => [...prev, userMessage]);
+    
+    // 建立 AI 訊息的 placeholder，用於即時更新
+    const aiMessageId = Date.now() + 1;
+    const aiMessage = {
+      id: aiMessageId,
+      type: 'assistant',
+      content: '',
+      statusMessages: [],
+      isStreaming: true,
+      timestamp: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+    };
+    
+    setMessages(prev => [...prev, aiMessage]);
     setIsLoading(true);
     
     try {
-      // 確保會話 ID 是有效的字符串
-      const sessionId = selectedConversation?.id?.toString() || 'default';
-      
-      const requestBody = {
-        message: trimmedMessage,
-        session_id: sessionId
-      };
-
-      console.log('發送聊天請求:', requestBody);
-
-      const response = await fetch('https://lawschatter.mooo.com/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      await chatAPI.sendMessageStream(
+        {
+          question: trimmedMessage,
+          collection: 'embedding-seperate',
+          mode: 'hybrid',
+          limit: 10,
+          score_threshold: 0.95,
+          temperature: 2,
+          max_tokens: 1000,
+          streaming: true
         },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const aiResponse = {
-          id: Date.now() + 1,
-          type: 'assistant',
-          content: data.response,
-          timestamp: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
-        };
-        setMessages(prev => [...prev, aiResponse]);
-      } else {
-        // 處理具體的 HTTP 錯誤狀態
-        let errorMessage = '抱歉，服務器回應異常，請稍後再試。';
-        
-        if (response.status === 422) {
-          errorMessage = '請求格式錯誤，請檢查您的輸入並重新發送。';
-        } else if (response.status === 503) {
-          errorMessage = '服務暫時不可用，請稍後再試。';
-        } else if (response.status >= 500) {
-          errorMessage = '服務器內部錯誤，請聯繫管理員。';
+        {
+          onStatus: (status) => {
+            setMessages(prev => prev.map(msg => 
+              msg.id === aiMessageId
+                ? { ...msg, statusMessages: [...(msg.statusMessages || []), status] }
+                : msg
+            ));
+          },
+          onToken: (token) => {
+            setMessages(prev => prev.map(msg => 
+              msg.id === aiMessageId
+                ? { ...msg, content: msg.content + token }
+                : msg
+            ));
+          },
+          onComplete: (data) => {
+            setMessages(prev => prev.map(msg => 
+              msg.id === aiMessageId
+                ? { ...msg, isStreaming: false, sources: data.sources }
+                : msg
+            ));
+            setIsLoading(false);
+          },
+          onError: (error) => {
+            console.error('SSE 串流錯誤:', error);
+            setMessages(prev => prev.map(msg => 
+              msg.id === aiMessageId
+                ? { 
+                    ...msg, 
+                    content: '抱歉，目前無法連接到後端服務，請檢查網路連接並稍後再試。',
+                    isStreaming: false,
+                    statusMessages: []
+                  }
+                : msg
+            ));
+            setIsLoading(false);
+          }
         }
-
-        const errorResponse = {
-          id: Date.now() + 1,
-          type: 'assistant',
-          content: errorMessage,
-          timestamp: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
-        };
-        setMessages(prev => [...prev, errorResponse]);
-
-        // 記錄詳細錯誤信息
-        console.error(`API 請求失敗: ${response.status} ${response.statusText}`);
-        try {
-          const errorData = await response.json();
-          console.error('錯誤詳情:', errorData);
-        } catch (e) {
-          console.error('無法解析錯誤回應');
-        }
-      }
+      );
     } catch (error) {
       console.error('Error calling chatbot API:', error);
-      const errorResponse = {
-        id: Date.now() + 1,
-        type: 'assistant',
-        content: '抱歉，目前無法連接到後端服務，請檢查網路連接並稍後再試。',
-        timestamp: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, errorResponse]);
-    } finally {
+      setMessages(prev => prev.map(msg => 
+        msg.id === aiMessageId
+          ? { 
+              ...msg, 
+              content: '抱歉，發生未預期的錯誤，請稍後再試。',
+              isStreaming: false,
+              statusMessages: []
+            }
+          : msg
+      ));
       setIsLoading(false);
     }
   };

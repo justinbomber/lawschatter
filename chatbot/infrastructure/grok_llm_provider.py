@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, AsyncGenerator
 from openai import AsyncOpenAI
 from domain.interfaces import ILLMProvider
 from entities.models import ChatMessage
@@ -46,6 +46,31 @@ class GrokLLMProvider(ILLMProvider):
         )
         
         return response.choices[0].message.content
+    
+    async def generate_response_stream(
+        self,
+        messages: List[ChatMessage],
+        temperature: float,
+        max_tokens: int
+    ) -> AsyncGenerator[str, None]:
+        logger.info(f"呼叫 Grok LLM (串流): model={self.model}, temperature={temperature}")
+        
+        grok_messages = [
+            {"role": msg.role, "content": msg.content}
+            for msg in messages
+        ]
+        
+        stream = await self.client.chat.completions.create(
+            model=self.model,
+            messages=grok_messages,
+            stream=True,
+            # temperature=temperature,
+            # max_tokens=max_tokens
+        )
+        
+        async for chunk in stream:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
     
     def is_available(self) -> bool:
         return bool(self.settings.xai.api_key)

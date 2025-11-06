@@ -1,6 +1,7 @@
 import logging
 import httpx
-from typing import Dict, Any
+import json
+from typing import Dict, Any, AsyncGenerator
 from domain.interfaces import IRAGClient
 from entities.models import RAGSearchRequest, RAGSearchResponse
 from config.settings import Settings
@@ -22,7 +23,8 @@ class RAGClient(IRAGClient):
             "query_text": request.query_text,
             "mode": request.mode,
             "limit": request.limit,
-            "score_threshold": request.score_threshold
+            "score_threshold": request.score_threshold,
+            "streaming": False
         }
         
         logger.info(f"呼叫 RAG 搜尋服務: {url}")
@@ -33,6 +35,29 @@ class RAGClient(IRAGClient):
             data = response.json()
         
         return RAGSearchResponse(**data)
+    
+    async def search_stream(self, request: RAGSearchRequest) -> AsyncGenerator[Dict[str, Any], None]:
+        url = f"{self.base_url}/search"
+        
+        payload = {
+            "collection": request.collection,
+            "query_text": request.query_text,
+            "mode": request.mode,
+            "limit": request.limit,
+            "score_threshold": request.score_threshold,
+            "streaming": True
+        }
+        
+        logger.info(f"呼叫 RAG 搜尋服務 (串流): {url}")
+        
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with client.stream("POST", url, json=payload) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        data_str = line[6:]
+                        chunk = json.loads(data_str)
+                        yield chunk
     
     async def health_check(self) -> bool:
         url = f"{self.base_url}/health"

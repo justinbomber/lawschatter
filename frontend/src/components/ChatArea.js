@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import './ChatArea.css';
 import RagSelector from './RagSelector';
 import ReferencePanel from './ReferencePanel';
@@ -279,8 +282,47 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
               </div>
               <div className="message-bubble">
                 <div className="message-content">
+                  {/* 顯示狀態訊息（灰色） */}
+                  {message.statusMessages && message.statusMessages.length > 0 && (
+                    <div className="status-messages">
+                      {message.statusMessages.map((status, idx) => (
+                        <div key={idx} className="status-message">
+                          {status}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* 顯示主要內容 */}
                   <div className="message-text">
-                    {message.content || t(message.contentKey)}
+                    {message.type === 'assistant' ? (
+                      <>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeRaw]}
+                          components={{
+                            code({node, inline, className, children, ...props}) {
+                              return inline ? (
+                                <code className={className} {...props}>
+                                  {children}
+                                </code>
+                              ) : (
+                                <pre>
+                                  <code className={className} {...props}>
+                                    {children}
+                                  </code>
+                                </pre>
+                              );
+                            }
+                          }}
+                        >
+                          {message.content || t(message.contentKey)}
+                        </ReactMarkdown>
+                        {message.isStreaming && <span className="streaming-cursor">▊</span>}
+                      </>
+                    ) : (
+                      message.content || t(message.contentKey)
+                    )}
                   </div>
                   <div className="message-timestamp">{message.timestamp}</div>
                 </div>
