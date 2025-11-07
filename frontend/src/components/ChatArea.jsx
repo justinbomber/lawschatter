@@ -6,6 +6,7 @@ import rehypeRaw from 'rehype-raw';
 import './ChatArea.css';
 import RagSelector from './RagSelector.jsx';
 import ReferencePanel from './ReferencePanel.jsx';
+import * as MarkdownComponents from './MarkdownComponents.jsx';
 
 const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
   const { t } = useTranslation();
@@ -257,19 +258,26 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeRaw]}
                           components={{
-                            code({node, inline, className, children, ...props}) {
-                              return inline ? (
-                                <code className={className} {...props}>
-                                  {children}
-                                </code>
-                              ) : (
-                                <pre>
-                                  <code className={className} {...props}>
-                                    {children}
-                                  </code>
-                                </pre>
-                              );
-                            }
+                            p: MarkdownComponents.p,
+                            code: MarkdownComponents.code,
+                            a: MarkdownComponents.a,
+                            h1: MarkdownComponents.h1,
+                            h2: MarkdownComponents.h2,
+                            h3: MarkdownComponents.h3,
+                            h4: MarkdownComponents.h4,
+                            ul: MarkdownComponents.ul,
+                            ol: MarkdownComponents.ol,
+                            li: MarkdownComponents.li,
+                            blockquote: MarkdownComponents.blockquote,
+                            table: MarkdownComponents.table,
+                            thead: MarkdownComponents.thead,
+                            tbody: MarkdownComponents.tbody,
+                            tr: MarkdownComponents.tr,
+                            th: MarkdownComponents.th,
+                            td: MarkdownComponents.td,
+                            hr: MarkdownComponents.hr,
+                            strong: MarkdownComponents.strong,
+                            em: MarkdownComponents.em,
                           }}
                         >
                           {message.content || t(message.contentKey)}
@@ -291,32 +299,6 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
             </div>
           );
         })}
-        
-        {isLoading && (
-          <div className="message assistant message-container">
-            <div className="message-header">
-              <div className="message-avatar">
-                <div className="avatar ai-avatar">
-                  🤖
-                </div>
-              </div>
-              <div className="message-user-name">
-                AI Assistant
-              </div>
-            </div>
-            <div className="message-bubble">
-              <div className="message-content">
-                <div className="message-text">
-                  <div className="typing-indicator">
-                    <div className="dot"></div>
-                    <div className="dot"></div>
-                    <div className="dot"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
         
                       <div ref={messagesEndRef} />
                     </div>
