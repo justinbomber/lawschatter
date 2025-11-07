@@ -138,7 +138,8 @@ class CLI:
             output_dir=self.config.output_dir
         )
 
-        use_case_json.execute(["MLDM,113,訴,549,20250526,1","TPHM,113,上訴,6418,20250617,1"])
+        use_case_json.execute(["TPHM,113,上訴,6418,20250617,1"])
+        # use_case_json.execute(["MLDM,113,訴,549,20250526,1","TPHM,113,上訴,6418,20250617,1"])
         
         return 0
 
