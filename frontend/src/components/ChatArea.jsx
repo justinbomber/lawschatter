@@ -10,8 +10,6 @@ import ReferencePanel from './ReferencePanel.jsx';
 const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
   const { t } = useTranslation();
   const [inputMessage, setInputMessage] = useState('');
-  const [selectedModel, setSelectedModel] = useState('GPT-4');
-  const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [showRagSelector, setShowRagSelector] = useState(false);
   const [hasRagSettings, setHasRagSettings] = useState(false);
   const [isInitialState, setIsInitialState] = useState(true);
@@ -30,6 +28,7 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
   const messagesEndRef = useRef(null);
   const chatMessagesRef = useRef(null);
   const inputRef = useRef(null);
+  const inputContainerRef = useRef(null);
 
   // 檢查是否有有效的RAG設定
   useEffect(() => {
@@ -60,13 +59,6 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
     };
   }, []);
 
-  const models = [
-    { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI' },
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI' },
-    { id: 'gpt-5', name: 'gpt-5', provider: 'OpenAI' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI' }
-  ];
-
   // 自動滾動到底部
   const scrollToBottom = () => {
     if (chatMessagesRef.current) {
@@ -91,6 +83,11 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
       
       onSendMessage(inputMessage.trim());
       setInputMessage('');
+      
+      // 重置 textarea 高度
+      if (inputRef.current) {
+        inputRef.current.style.height = 'auto';
+      }
     }
   };
 
@@ -103,13 +100,26 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
 
   const handleWrapperClick = (e) => {
     // 避免點擊按鈕時觸發聚焦
-    if (e.target.closest('.input-actions')) {
+    if (e.target.closest('.input-actions-row')) {
       return;
     }
     if (inputRef.current) {
       inputRef.current.focus();
     }
   };
+
+  // 自動調整 textarea 高度
+  const adjustTextareaHeight = () => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    }
+  };
+
+  // 當輸入內容變化時自動調整高度
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [inputMessage]);
 
   const MessageActions = ({ messageType, messageId, hasReferences }) => {
     if (messageType === 'user') {
@@ -183,11 +193,6 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
     }
   };
 
-  const handleModelSelect = (model) => {
-    setSelectedModel(model.name);
-    setShowModelDropdown(false);
-  };
-
   const handleShowReferences = (messageId) => {
     // 模擬獲取該訊息的參考資料
     // 實際應該從訊息資料中取得對應的references
@@ -201,63 +206,14 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
   return (
     <div className={`chat-area ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <div className="chat-main-content">
-        <div className="chat-header">
-          <div className="model-selector">
-            <button 
-              className="model-selector-btn"
-              onClick={() => setShowModelDropdown(!showModelDropdown)}
-            >
-              <div className="model-info">
-                <span className="model-icon">🤖</span>
-                <span className="model-name">{selectedModel}</span>
-              </div>
-              <i className={`fas fa-chevron-${showModelDropdown ? 'up' : 'down'}`}></i>
-            </button>
-            
-            {showModelDropdown && (
-              <div className="model-dropdown">
-                <div className="dropdown-header">
-                  <input 
-                    type="text" 
-                    placeholder="搜尋模型..." 
-                    className="model-search"
-                  />
-                </div>
-                <div className="model-list">
-                  {models.map(model => (
-                    <button
-                      key={model.id}
-                      className={`model-item ${selectedModel === model.name ? 'selected' : ''}`}
-                      onClick={() => handleModelSelect(model)}
-                    >
-                      <div className="model-provider">
-                        <span className="provider-logo">
-                          {model.provider === 'OpenAI' && '🔶'}
-                          {model.provider === 'xAI' && '❌'}
-                          {model.provider === 'Anthropic' && '🟣'}
-                          {model.provider === 'Google' && '🟢'}
-                        </span>
-                        <span className="provider-name">{model.provider}</span>
-                      </div>
-                      <span className="model-name">{model.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* 歡迎語區域 - 僅在初始狀態顯示 */}
-        {isInitialState && (
-          <div className="welcome-area">
-            <div className="welcome-text">
-              Welcome to Laws Chatter! Enjoy your experience.
-            </div>
-          </div>
-        )}
-
-        <div className="chat-messages" ref={chatMessagesRef}>
+        <div className={`content-wrapper ${isInitialState ? 'landing-layout' : 'conversation-layout'}`}>
+          {/* 訊息顯示區域 */}
+          {!isInitialState && (
+            <div className="messages-view">
+              <div className="messages-outer">
+                <div className="messages-inner">
+                  <div className="messages-scroll" ref={chatMessagesRef}>
+                    <div className="messages-list">
                   {messages.map(message => {
           // 檢查是否為AI回答且用戶有設定RAG
           const hasReferences = message.type === 'assistant' && hasRagSettings;
@@ -362,43 +318,57 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
           </div>
         )}
         
-          <div ref={messagesEndRef} />
-        </div>
-        
-        <div className={`chat-input-container ${
-          isInitialState ? 'initial-state' : 'conversation-state'
-        }`}>
-          <div className="chat-input-wrapper" onClick={handleWrapperClick}>
-            <textarea
-              ref={inputRef}
-              className="chat-input"
-              placeholder={t('chat.inputPlaceholder')}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              rows={1}
-            />
-            <div className="input-actions">
-              <button className="input-action-btn" title="附件">
-                <i className="fas fa-paperclip"></i>
-              </button>
-              <button className="input-action-btn" title="語音輸入">
-                <i className="fas fa-microphone"></i>
-              </button>
-              <button 
-                className={`input-action-btn ${hasRagSettings ? 'active' : ''}`} 
-                title="法律資料庫設定"
-                onClick={() => setShowRagSelector(true)}
-              >
-                <i className="fas fa-balance-scale"></i>
-              </button>
-              <button 
-                className="send-btn"
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim()}
-              >
-                <i className="fas fa-paper-plane"></i>
-              </button>
+                      <div ref={messagesEndRef} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* 輸入框區域包裝 */}
+          <div className={`input-form-wrapper ${isInitialState ? 'landing-state' : 'conversation-state'}`}>
+            {isInitialState && (
+              <div className="welcome-message">
+                <div className="welcome-text">
+                  Welcome to Laws Chatter! Enjoy your experience.
+                </div>
+              </div>
+            )}
+            
+            <div className="chat-input-container" ref={inputContainerRef}>
+              <div className="chat-input-wrapper" onClick={handleWrapperClick}>
+                <textarea
+                  ref={inputRef}
+                  className="chat-input"
+                  placeholder={t('chat.inputPlaceholder')}
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  rows={1}
+                />
+                <div className="input-actions-row">
+                  <div className="left-actions">
+                    <button className="input-action-btn" title="附件">
+                      <i className="fas fa-paperclip"></i>
+                    </button>
+                    <button 
+                      className={`input-action-btn ${hasRagSettings ? 'active' : ''}`} 
+                      title="法律資料庫設定"
+                      onClick={() => setShowRagSelector(true)}
+                    >
+                      <i className="fas fa-balance-scale"></i>
+                    </button>
+                  </div>
+                  <button 
+                    className="send-btn"
+                    onClick={handleSendMessage}
+                    disabled={!inputMessage.trim()}
+                  >
+                    <i className="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -137,7 +137,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                             jid_score_map[jid] += score
                         else:
                             jid_score_map[jid] = score
-                        logger.info(f"-----> Scroll 取得 jid: {jid}")
+                        # logger.info(f"-----> Scroll 取得 jid: {jid}")
                 
                 logger.info(f"Scroll 方式共取得 {len(condition_jids)} 個 jid")
                 condition_jid_sets.append(condition_jids)
@@ -289,18 +289,21 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             metadata = payload.get('metadata', {})
             for defendant in metadata.get('defendants', []):
                 defendants.append(defendant.get('defendant_name'))
+            summary_type = metadata.get('summary_type')
             simplified_results.append({
                 "page_content": payload.get('page_content'),
                 "jid": metadata.get('jid_full'),
-                "defendants": defendants
+                "defendants": defendants,
+                "chunk_type": summary_type
             })
         
-        logger.info(f"最終搜尋結果: 總共 {len(simplified_results)} 個結果")
         if len(simplified_results) > 0:
-            for result in simplified_results:
-                logger.info(f"---> 最終結果: {result.get('jid')}, content: {result.get('page_content')}")
+            logger.info(f"最終搜尋結果: 總共 {len(simplified_results)} 個結果")
+            # for result in simplified_results:
+                # logger.info(f"---> 最終結果: {result.get('jid')}, content: {result.get('page_content')}")
         else:
-            logger.info(f"---> 最終結果: 沒有結果")
+            logger.info(f"最終搜尋結果: 總共 {len(simplified_results)} 個結果")
+            # logger.info(f"---> 最終結果: 沒有結果")
         
         return simplified_results
     

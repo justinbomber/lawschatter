@@ -123,6 +123,7 @@
 .message-text li {
   margin: 2px 0;
   line-height: 1.5;
+  white-space: normal;
 }
 
 .message-text code {
@@ -220,136 +221,54 @@
   margin-left: 0;
 }
 
-.chat-header {
-  padding: 20px 24px;
-  background-color: #ffffff;
+/* 主內容包裝器 - LibreChat 風格 */
+.content-wrapper {
   display: flex;
-  align-items: center;
-}
-
-.model-selector {
-  position: relative;
-}
-
-.model-selector-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  background-color: #f7f7f8;
-  border: 1px solid #e3e3e3;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-  color: #333;
-  min-width: 200px;
-}
-
-.model-selector-btn:hover {
-  background-color: #ececf1;
-  border-color: #d9d9e3;
-}
-
-.model-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-
-.model-icon {
-  font-size: 16px;
-}
-
-.model-name {
-  font-weight: 500;
-}
-
-.model-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #e3e3e3;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  z-index: 1000;
-  margin-top: 4px;
-  max-height: 400px;
-  overflow: hidden;
-
-}
-
-.dropdown-header {
-  padding: 12px;
-  border-bottom: 1px solid #e3e3e3;
-}
-
-.model-search {
+  flex-direction: column;
+  height: 100%;
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #e3e3e3;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
 }
 
-.model-search:focus {
-  border-color: #10a37f;
-  box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.1);
+.content-wrapper.landing-layout {
+  flex: 1;
+  align-items: center;
+  justify-content: center;
 }
 
-.model-list {
-  max-height: 300px;
+.content-wrapper.conversation-layout {
+  height: 100%;
   overflow-y: auto;
 }
 
-.model-item {
+/* 訊息顯示區域 - 完全模仿 LibreChat */
+.messages-view {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  overflow-y: auto;
+}
+
+.messages-outer {
+  position: relative;
+  height: 100%;
+}
+
+.messages-inner {
+  position: relative;
+  height: 100%;
+}
+
+.messages-scroll {
+  height: 100%;
+  overflow-y: auto;
   width: 100%;
-  padding: 12px;
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
+}
+
+.messages-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  transition: background-color 0.2s ease;
+  padding-bottom: 36px;
 }
-
-.model-item:hover {
-  background-color: #f7f7f8;
-}
-
-.model-item.selected {
-  background-color: #e3f2fd;
-}
-
-.model-provider {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #666;
-}
-
-.provider-logo {
-  font-size: 14px;
-}
-
-.provider-name {
-  font-weight: 500;
-}
-
-.model-item .model-name {
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
-}
-
-
 
 .chat-messages {
   flex: 1;
@@ -375,7 +294,7 @@
 
 .message.user {
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .message.assistant {
@@ -383,9 +302,34 @@
   align-items: flex-start;
 }
 
+/* 單個訊息容器 - 模仿 LibreChat 居中和寬度限制 */
 .message-container {
-  position: relative;
-  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  padding: 16px;
+  transition: all 0.3s;
+  max-width: 47rem;
+}
+
+@media (min-width: 1280px) {
+  .message-container {
+    max-width: 55rem;
+  }
+}
+
+/* 使用者訊息靠左對齊，與AI訊息一致 */
+.message.user.message-container {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 47rem;
+}
+
+@media (min-width: 1280px) {
+  .message.user.message-container {
+    max-width: 55rem;
+  }
 }
 
 .message-header {
@@ -395,6 +339,12 @@
   margin-bottom: 4px;
 }
 
+/* 使用者訊息的 header 靠左對齊 */
+.message.user .message-header {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
 .message-user-name {
   font-weight: 600;
   font-size: 16px;
@@ -402,40 +352,39 @@
 }
 
 .message-bubble {
+  position: relative;
   display: flex;
+  width: 91.666667%; /* w-11/12 */
   flex-direction: column;
-  width: calc(100% - 44px);
-  max-width: calc(100% - 44px);
-  overflow: hidden;
-  word-wrap: break-word;
 }
 
 .message.user .message-bubble {
-  margin-left: 0;
-  margin-right: 44px; /* 使用者訊息靠右對齊 */
-  align-items: flex-end;
-}
-
-.message.assistant .message-bubble {
-  margin-left: 44px; /* AI 訊息靠左對齊 */
-  margin-right: 0;
   align-items: flex-start;
 }
 
+.message.assistant .message-bubble {
+  align-items: flex-start;
+}
+
+/* 頭像區域 */
 .message-avatar {
+  position: relative;
+  display: flex;
   flex-shrink: 0;
-  margin-top: 4px;
+  flex-direction: column;
+  align-items: center;
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
   display: flex;
+  height: 24px;
+  width: 24px;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  font-size: 14px;
   font-weight: 600;
-  font-size: 12px;
 }
 
 .user-avatar {
@@ -462,7 +411,10 @@
   border-radius: 0;
   padding: 0;
   margin-bottom: 8px;
-  text-align: right;
+}
+
+.message.user .message-text {
+  text-align: left;
 }
 
 .message.assistant .message-content {
@@ -494,7 +446,7 @@
 
 .message.user .message-timestamp {
   color: #666;
-  text-align: right;
+  text-align: left;
 }
 
 .message.assistant .message-timestamp {
@@ -518,7 +470,7 @@
 }
 
 .message.user .message-actions {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .message.assistant .message-actions {
@@ -617,177 +569,124 @@
   border-radius: 0 0 8px 8px;
 }
 
-.chat-input-container {
-  padding: 24px;
-  background-color: #ffffff;
+/* 輸入框包裝器 - 模仿 LibreChat */
+.input-form-wrapper {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 8px;
+  transition: max-width 0.3s;
+  padding: 0 8px;
+  max-width: 48rem;
 }
 
-/* 歡迎語區域樣式 */
-.welcome-area {
-  position: fixed;
-  bottom: calc(50% + 60px);
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  z-index: 150;
-  max-width: 1000px;
-  width: calc(100% - 48px);
-  pointer-events: none;
+@media (min-width: 1280px) {
+  .input-form-wrapper {
+    max-width: 56rem;
+  }
+}
+
+.input-form-wrapper.landing-state {
+  margin-bottom: 7rem;
+}
+
+.input-form-wrapper.conversation-state {
+  margin-bottom: 2.5rem;
+}
+
+/* 歡迎訊息 */
+.welcome-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .welcome-text {
-  font-size: 20px;
-  color: #333;
+  font-size: 1.25rem;
   font-weight: 500;
-  padding: 12px 0;
+  text-align: center;
+  color: #333;
 }
 
-.chat-input-container.initial-state {
-  position: fixed;
-  bottom: 50%;
-  left: 50%;
-  transform: translate(-50%, 50%);
-  width: calc(100vw / 3); /* 佔螢幕三分之一 */
-  min-width: 400px; /* 最小寬度 */
-  max-width: 1000px; /* 最大寬度 */
-  z-index: 100;
-}
-
-.chat-area.sidebar-collapsed .chat-input-container.initial-state {
-  width: calc(100vw / 3);
-  min-width: 400px;
-  left: 50%;
-}
-
-.chat-area.sidebar-collapsed .welcome-area {
-  left: 50%;
-}
-
-.chat-input-container.conversation-state {
-  position: relative;
-  bottom: auto;
-  left: auto;
-  transform: none;
-  width: auto;
-}
-
-.chat-input-container.conversation-state .chat-input-wrapper {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.chat-input-container.animating-to-bottom {
-  position: fixed;
-  animation: slideToBottom 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  z-index: 100;
-}
-
-.chat-area.sidebar-collapsed .chat-input-container.animating-to-bottom {
-  animation: slideToBottomCollapsed 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes slideToBottom {
-  0% {
-    bottom: 50%;
-    left: 50%;
-    transform: translate(-50%, 50%);
-    width: calc(100vw / 3);
-    min-width: 400px;
-    max-width: 1000px;
-    padding: 24px;
-  }
-  100% {
-    bottom: 0;
-    left: 0;
-    right: 0;
-    transform: none;
-    width: 100%;
-    min-width: auto;
-    max-width: none;
-    padding: 24px;
-    position: relative;
+@media (min-width: 640px) {
+  .welcome-text {
+    font-size: 1.5rem;
   }
 }
 
-@keyframes slideToBottomCollapsed {
-  0% {
-    bottom: 50%;
-    left: 50%;
-    transform: translate(-50%, 50%);
-    width: calc(100vw / 3);
-    min-width: 400px;
-    max-width: 1000px;
-    padding: 24px;
-  }
-  100% {
-    bottom: 0;
-    left: 0;
-    right: 0;
-    transform: none;
-    width: 100%;
-    min-width: auto;
-    max-width: none;
-    padding: 24px;
-    position: relative;
-  }
-}
-
-
-
-.chat-input-wrapper {
-  max-width: 1000px;
-  margin: 0 auto;
+/* 輸入框容器 - 完全模仿 LibreChat 的圓角和陰影 */
+.chat-input-container {
   position: relative;
   display: flex;
-  align-items: center;
-  background-color: #f7f7f8;
-  border-radius: 12px;
-  padding: 16px;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 1.5rem;
   border: 1px solid #e3e3e3;
-  transition: border-color 0.2s ease;
-  min-height: 56px;
+  background-color: #ffffff;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.chat-input-container:focus-within {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* 輸入框包裝 */
+.chat-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 16px;
   cursor: text;
 }
 
-.chat-input-wrapper:focus-within {
-  border-color: #10a37f;
-  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
-}
-
+/* Textarea */
 .chat-input {
-  flex: 1;
-  background: none;
+  width: 100%;
+  margin: 0;
+  resize: none;
+  padding: 0;
+  background: transparent;
   border: none;
   outline: none;
-  resize: none;
   font-size: 16px;
   line-height: 1.5;
+  max-height: 45vh;
   color: #000000 !important;
-  min-height: 24px;
-  max-height: 120px;
   font-family: inherit;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  align-items: center;
+  min-height: 24px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .chat-input {
+    max-height: 55vh;
+  }
 }
 
 .chat-input::placeholder {
   color: #999;
-  vertical-align: middle;
 }
 
-/* 確保佔位文字垂直居中 */
-.chat-input:placeholder-shown {
+/* 按鈕列 - 保留所有現有按鈕，只調整排列 */
+.input-actions-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
 }
 
-.input-actions {
+.left-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .input-action-btn {
@@ -836,6 +735,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
+  flex-shrink: 0;
 }
 
 .send-btn:hover:not(:disabled) {
@@ -848,19 +748,23 @@
 }
 
 /* Scrollbar styling */
+.messages-scroll::-webkit-scrollbar,
 .chat-messages::-webkit-scrollbar {
   width: 6px;
 }
 
+.messages-scroll::-webkit-scrollbar-track,
 .chat-messages::-webkit-scrollbar-track {
   background: transparent;
 }
 
+.messages-scroll::-webkit-scrollbar-thumb,
 .chat-messages::-webkit-scrollbar-thumb {
   background: #d9d9e3;
   border-radius: 3px;
 }
 
+.messages-scroll::-webkit-scrollbar-thumb:hover,
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: #bbb;
 }
