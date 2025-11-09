@@ -112,7 +112,7 @@
 /* Markdown 段落樣式 - 與 LibreChat 一致 */
 .markdown-paragraph {
   margin-bottom: 4px;
-  white-space: pre-wrap;
+  white-space: normal;
   line-height: 1.5;
 }
 
@@ -125,7 +125,7 @@
 /* 保留向後相容 */
 .message-text p {
   margin-bottom: 4px;
-  white-space: pre-wrap;
+  white-space: normal;
   line-height: 1.5;
 }
 
@@ -520,6 +520,7 @@
 
 .message.user .message-text {
   text-align: left;
+  white-space: pre-wrap;
 }
 
 .message.assistant .message-content {
@@ -538,9 +539,13 @@
   overflow-wrap: break-word;
   word-break: break-word;
   hyphens: auto;
-  white-space: pre-wrap;
+  white-space: normal;
   max-width: 100%;
   overflow: hidden;
+}
+
+.message.assistant .message-text {
+  white-space: normal;
 }
 
 .message-timestamp {
@@ -601,6 +606,10 @@
 .action-btn:hover {
   background-color: #f0f0f0;
   color: #333;
+}
+
+.action-btn.copied {
+  color: #10a37f;
 }
 
 .reference-btn {

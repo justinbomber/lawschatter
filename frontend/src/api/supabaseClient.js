@@ -44,11 +44,14 @@ supabaseAuthClient.interceptors.response.use(
 
 export const supabaseAuth = {
   signup: async ({ email, password, username }) => {
+    // 將 username 存放在 user metadata 中，而不是 auth.users.username
+    // 這樣可以避免唯一性約束衝突
     const response = await supabaseAuthClient.post('/signup', {
       email,
       password,
       data: {
-        username: username || email.split('@')[0]
+        username: username || email.split('@')[0],
+        display_name: username || email.split('@')[0]
       }
     });
     return response.data;

@@ -24,15 +24,25 @@ create or replace function lawschatter.handle_new_user()
 returns trigger
 language plpgsql
 security definer
+set search_path = public
 as $$
 begin
-  insert into lawschatter.user_profiles (user_id, email, username)
+  -- 使用 ON CONFLICT 避免重複插入錯誤
+  insert into lawschatter.user_profiles (user_id, email, username, display_name)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1))
-  );
+    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
+    coalesce(new.raw_user_meta_data->>'display_name', new.raw_user_meta_data->>'username', split_part(new.email, '@', 1))
+  )
+  on conflict (user_id) do nothing;
+  
   return new;
+exception
+  when others then
+    -- 記錄錯誤但不阻止用戶註冊
+    raise warning 'Failed to create user profile for user %: %', new.id, SQLERRM;
+    return new;
 end;
 $$;
 

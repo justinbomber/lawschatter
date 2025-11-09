@@ -20,6 +20,7 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
 
   const [showReferencePanel, setShowReferencePanel] = useState(false);
   const [currentReferences, setCurrentReferences] = useState([]);
+  const [copiedMessageId, setCopiedMessageId] = useState(null);
 
   // 檢查是否還在初始狀態（沒有任何消息）
   useEffect(() => {
@@ -73,9 +74,15 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
     }
   };
 
-  // 當訊息更新時自動滾動到底部
+  // 僅在最後一則為「使用者」訊息時才自動捲動到底部（LLM 回答時不強制定位最底）
   useEffect(() => {
-    scrollToBottom();
+    const lastMessage = messages && messages.length > 0 ? messages[messages.length - 1] : null;
+    if (!lastMessage) {
+      return;
+    }
+    if (lastMessage.type === 'user') {
+      scrollToBottom();
+    }
   }, [messages]);
 
   const handleSendMessage = () => {
@@ -125,18 +132,51 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
     adjustTextareaHeight();
   }, [inputMessage]);
 
+  // 複製訊息內容
+  const copyMessageContent = (messageId) => {
+    const targetMessage = (messages || []).find(m => m.id === messageId);
+    if (!targetMessage) {
+      return;
+    }
+    const text = (typeof targetMessage.content === 'string' && targetMessage.content.trim())
+      ? targetMessage.content
+      : (targetMessage.contentKey ? t(targetMessage.contentKey) : '');
+    if (!text) {
+      return;
+    }
+    let usedClipboardApi = false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+      usedClipboardApi = true;
+    }
+    if (!usedClipboardApi) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'absolute';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopiedMessageId(messageId);
+    setTimeout(() => {
+      setCopiedMessageId(null);
+    }, 1000);
+  };
+
   const MessageActions = ({ messageType, messageId, hasReferences }) => {
     if (messageType === 'user') {
       return (
         <div className="message-actions">
-          <button className="action-btn" title={t('chat.actions.edit')}>
-            <i className="fas fa-edit"></i>
-          </button>
-          <button className="action-btn" title={t('chat.actions.delete')}>
-            <i className="fas fa-trash"></i>
-          </button>
-          <button className="action-btn" title={t('chat.actions.share')}>
-            <i className="fas fa-share"></i>
+          <button 
+            className={`action-btn ${copiedMessageId === messageId ? 'copied' : ''}`} 
+            title={copiedMessageId === messageId ? t('chat.actions.copied') || '已複製' : t('chat.actions.copy')}
+            onClick={() => copyMessageContent(messageId)}
+            disabled={copiedMessageId === messageId}
+          >
+            <i className={copiedMessageId === messageId ? 'fas fa-check' : 'fas fa-copy'}></i>
           </button>
         </div>
       );
@@ -153,17 +193,16 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
               參考資料
             </button>
           )}
-          <button className="action-btn" title={t('chat.actions.copy')}>
-            <i className="fas fa-copy"></i>
+          <button 
+            className={`action-btn ${copiedMessageId === messageId ? 'copied' : ''}`} 
+            title={copiedMessageId === messageId ? t('chat.actions.copied') || '已複製' : t('chat.actions.copy')}
+            onClick={() => copyMessageContent(messageId)}
+            disabled={copiedMessageId === messageId}
+          >
+            <i className={copiedMessageId === messageId ? 'fas fa-check' : 'fas fa-copy'}></i>
           </button>
           <button className="action-btn" title={t('chat.actions.regenerate')}>
             <i className="fas fa-redo"></i>
-          </button>
-          <button className="action-btn" title={t('chat.actions.edit')}>
-            <i className="fas fa-edit"></i>
-          </button>
-          <button className="action-btn" title={t('chat.actions.share')}>
-            <i className="fas fa-share"></i>
           </button>
           <div className="rating-actions">
             <button className="action-btn" title={t('chat.actions.rate')}>
@@ -173,25 +212,9 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
               <i className="fas fa-thumbs-down"></i>
             </button>
           </div>
-          <div className="dropdown">
-            <button className="action-btn dropdown-toggle" title={t('chat.actions.more')}>
-              <i className="fas fa-ellipsis-h"></i>
-            </button>
-            <div className="dropdown-menu">
-              <button className="dropdown-item">
-                <i className="fas fa-language"></i>
-                {t('chat.actions.translate')}
-              </button>
-              <button className="dropdown-item">
-                <i className="fas fa-save"></i>
-                {t('chat.actions.save')}
-              </button>
-              <button className="dropdown-item">
-                <i className="fas fa-flag"></i>
-                {t('chat.actions.report')}
-              </button>
-            </div>
-          </div>
+          <button className="action-btn" title={t('chat.actions.report')}>
+            <i className="fas fa-flag"></i>
+          </button>
         </div>
       );
     }
