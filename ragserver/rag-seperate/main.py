@@ -7,6 +7,7 @@ from config.settings import Settings
 from infrastructure.qdrant_client_wrapper import QdrantClientWrapper
 from infrastructure.embeddings.dense_embedding import DenseEmbeddingProvider
 from infrastructure.embeddings.sparse_embedding import SparseEmbeddingProvider
+from infrastructure.supabase_repository import SupabaseConversationRepository
 from services.search_service import SearchService
 from services.filter_service import FilterService
 from services.rerank_service import RerankService
@@ -42,8 +43,12 @@ async def lifespan(app: FastAPI):
         sparse_provider=sparse_provider,
         settings=settings
     )
-    # llm_extraction_service = OpenAIExtractionService(settings)
-    llm_extraction_service = GrokExtractionService(settings)
+    
+    if settings.llm_provider == "openai":
+        llm_extraction_service = OpenAIExtractionService(settings)
+    else:
+        llm_extraction_service = GrokExtractionService(settings)
+    
     filter_service = FilterService(settings, llm_extraction_service)
     rerank_service = RerankService(settings)
     
@@ -54,9 +59,12 @@ async def lifespan(app: FastAPI):
         settings=settings
     )
     
+    conversation_repository = SupabaseConversationRepository(settings)
+    
     search_controller = SearchController(
         qdrant_client=qdrant_client,
         document_search_orchestrator=document_search_orchestrator,
+        conversation_repository=conversation_repository,
         settings=settings
     )
     
@@ -66,6 +74,8 @@ async def lifespan(app: FastAPI):
     logger.info("Qdrant 搜尋 API 服務已啟動")
     logger.info(f"Qdrant URL: {settings.qdrant.url}")
     logger.info(f"Collection: {settings.qdrant.collection_name}")
+    logger.info(f"LLM Provider: {settings.llm_provider}")
+    logger.info(f"Supabase Schema: {settings.supabase.schema_name}")
     
     yield
     

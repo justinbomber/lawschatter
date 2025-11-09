@@ -43,6 +43,13 @@ class RAGSearchConfig:
     score_threshold: float
 
 
+@dataclass
+class SupabaseConfig:
+    url: str
+    key: str
+    schema_name: str
+
+
 class Settings:
     def __init__(self):
         load_dotenv()
@@ -79,6 +86,12 @@ class Settings:
             mode=os.getenv("RAG_MODE", "hybrid"),
             limit=int(os.getenv("RAG_LIMIT", "10")),
             score_threshold=float(os.getenv("RAG_SCORE_THRESHOLD", "1"))
+        )
+        
+        self.supabase = SupabaseConfig(
+            url=self._get_required_env("SUPABASE_URL"),
+            key=self._get_required_env("SUPABASE_KEY"),
+            schema_name=os.getenv("SUPABASE_SCHEMA", "lawschatter")
         )
     
     @staticmethod

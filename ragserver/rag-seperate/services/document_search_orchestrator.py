@@ -3,7 +3,7 @@ import json
 from typing import Dict, Any, List, Set, AsyncGenerator
 from sentence_transformers import SentenceTransformer, util
 import re
-from domain.interfaces import IDocumentSearchOrchestrator, ISearchService, IFilterService, IQdrantClient
+from domain.interfaces import IDocumentSearchOrchestrator, ISearchService, IFilterService, IQdrantClient, Message
 from services.search_service import SearchConfig
 from config.settings import Settings
 
@@ -59,9 +59,10 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         query_text: str,
         mode: str,
         limit: int,
-        logic: str = "AND"
+        logic: str = "AND",
+        history_messages: List[Message] = None
     ) -> List[Dict[str, Any]]:
-        structured_filter_lst = await self.filter_service.extract_filter_conditions(query_text)
+        structured_filter_lst = await self.filter_service.extract_filter_conditions(query_text, history_messages)
         
         logger.info("=" * 50)
         logger.info(f"過濾條件:\n{json.dumps(structured_filter_lst, ensure_ascii=False, indent=2)}")
@@ -313,14 +314,16 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         query_text: str,
         mode: str,
         limit: int,
-        logic: str = "AND"
+        logic: str = "AND",
+        history_messages: List[Message] = None
     ) -> List[Dict[str, Any]]:
         return await self._execute_search_logic(
             collection=collection,
             query_text=query_text,
             mode=mode,
             limit=limit,
-            logic=logic
+            logic=logic,
+            history_messages=history_messages
         )
     
     async def orchestrate_search_stream(
@@ -329,7 +332,8 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         query_text: str,
         mode: str,
         limit: int,
-        logic: str = "AND"
+        logic: str = "AND",
+        history_messages: List[Message] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         yield {"status": "正在重組你的訊息，並嘗試理解問題"}
         
@@ -338,7 +342,8 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             query_text=query_text,
             mode=mode,
             limit=limit,
-            logic=logic
+            logic=logic,
+            history_messages=history_messages
         )
         
         yield {"status": "完成向量搜尋"}

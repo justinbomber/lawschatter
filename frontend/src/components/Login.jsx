@@ -21,20 +21,81 @@ function Login({ onLogin, onSwitchToRegister }) {
       ...prev,
       [name]: value
     }));
+    
+    // 清除錯誤訊息
+    if (error) {
+      setError('');
+    }
+    if (authError) {
+      clearError();
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 基本驗證
+    if (!formData.email.trim()) {
+      setError('請輸入電子郵件');
+      return;
+    }
+    
+    if (!formData.password) {
+      setError('請輸入密碼');
+      return;
+    }
+    
     setLoading(true);
     setError('');
+    clearError();
     
-    // 直接跳轉到聊天界面，不做任何端點驗證
-    setTimeout(() => {
-      if (onLogin) {
-        onLogin();
+    try {
+      // 使用 Supabase Auth API 登入
+      const result = await authAPI.login({
+        email: formData.email.trim(),
+        password: formData.password
+      });
+      
+      if (result.success) {
+        // 登入成功，使用 AuthContext 的 login 函數
+        const loginSuccess = login(result.data);
+        if (loginSuccess) {
+          console.log('登入成功:', result.data);
+          // 呼叫父元件的 onLogin 函數
+          if (onLogin) {
+            onLogin();
+          }
+        } else {
+          setError('登入資料處理失敗，請重試');
+        }
+      } else {
+        // 登入失敗，顯示錯誤訊息
+        const errorMsg = result.error || '登入失敗';
+        
+        // 根據錯誤狀態碼提供更友好的錯誤訊息
+        if (result.status === 400) {
+          setError('電子郵件或密碼格式不正確');
+        } else if (result.status === 401) {
+          setError('電子郵件或密碼錯誤，請檢查後重試');
+        } else if (result.status === 404) {
+          setError('此電子郵件尚未註冊，請先註冊');
+        } else if (errorMsg.includes('Invalid login credentials')) {
+          setError('電子郵件或密碼錯誤，請檢查後重試');
+        } else if (errorMsg.includes('Email not confirmed')) {
+          setError('請先確認您的電子郵件後再登入');
+        } else if (errorMsg.includes('not found') || errorMsg.includes('User not found')) {
+          setError('此電子郵件尚未註冊，請先註冊');
+        } else {
+          setError(errorMsg);
+        }
       }
+    } catch (error) {
+      // 未預期的錯誤
+      console.error('登入失敗:', error);
+      setError('無法連接到伺服器，請檢查網路連接');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   return (
@@ -63,7 +124,7 @@ function Login({ onLogin, onSwitchToRegister }) {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="form-input"
+                className={`form-input ${(error || authError) ? 'error' : ''}`}
                 placeholder={t('auth.login.emailPlaceholder', '請輸入您的電子郵件')}
                 required
               />
@@ -79,7 +140,7 @@ function Login({ onLogin, onSwitchToRegister }) {
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="form-input"
+                className={`form-input ${(error || authError) ? 'error' : ''}`}
                 placeholder={t('auth.login.passwordPlaceholder', '請輸入您的密碼')}
                 required
               />

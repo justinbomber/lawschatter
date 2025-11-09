@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 node_modules/
 # C extensions
+LibreChat/
 *.so
 LibreChat/
 

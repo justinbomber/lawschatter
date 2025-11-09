@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { getUserInitials, getUserDisplayName, getAvatarColor } from '../utils/userUtils';
 import './Sidebar.css';
 
 const Sidebar = ({ 
@@ -10,9 +12,13 @@ const Sidebar = ({
   onSelectConversation, 
   onShowSettings,
   onNewConversation,
-  onLogout 
+  onRenameConversation,
+  onDeleteConversation,
+  onLogout,
+  loading
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMenuId, setActiveMenuId] = useState(null);
@@ -23,28 +29,10 @@ const Sidebar = ({
   const userMenuRef = useRef(null);
   const menuRefs = useRef({});
   
-  // User data
-  const userData = {
-    email: 'w0913706494@gmail.com',
-    name: 'User'
-  };
-  
-  // Generate initials from name or email
-  const getInitials = (name, email) => {
-    if (name) {
-      return name.substring(0, 2).toUpperCase();
-    }
-    // If no name, use first two characters of email before @
-    const emailPrefix = email.split('@')[0];
-    return emailPrefix.substring(0, 2).toUpperCase();
-  };
-  
-  const userInitials = getInitials(userData.name, userData.email);
-  
-  // Fixed theme color for user avatar
-  const getAvatarColor = () => {
-    return '#10a37f'; // 主題綠色
-  };
+  // 從 AuthContext 獲取用戶資料
+  const userDisplayName = getUserDisplayName(user);
+  const userInitials = getUserInitials(user?.display_name, user?.username, user?.email);
+  const avatarColor = getAvatarColor(user?.user_id || user?.email);
 
   // Get conversation icon based on content
   const getConversationIcon = (conversation) => {
@@ -105,7 +93,7 @@ const Sidebar = ({
   // Filter conversations based on search query
   const filteredConversations = conversations.filter(conversation => {
     if (!searchQuery) return true;
-    const title = t(conversation.titleKey) || conversation.title || '';
+    const title = conversation.title || t(conversation.titleKey) || '';
     return title.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
@@ -144,7 +132,7 @@ const Sidebar = ({
               autoFocus
             />
           ) : (
-            <div className="conversation-title">{t(conversation.titleKey)}</div>
+            <div className="conversation-title">{conversation.title || t(conversation.titleKey) || '新對話'}</div>
           )}
         </div>
         <div className="conversation-menu-container" ref={ref => menuRefs.current[conversation.id] = ref}>
@@ -245,16 +233,14 @@ const Sidebar = ({
   // Handle conversation rename
   const handleRenameConversation = (conversation) => {
     setRenamingId(conversation.id);
-    setNewName(t(conversation.titleKey) || conversation.title || '');
+    setNewName(conversation.title || t(conversation.titleKey) || '');
     setActiveMenuId(null);
   };
 
   // Handle rename save
   const handleRenameSave = (conversationId) => {
-    if (newName.trim()) {
-      // TODO: Call parent component's rename function
-      console.log('Rename conversation:', conversationId, 'to:', newName);
-      // For now, we'll just log it since we need the parent to handle the actual renaming
+    if (newName.trim() && onRenameConversation) {
+      onRenameConversation(conversationId, newName);
     }
     setRenamingId(null);
     setNewName('');
@@ -275,10 +261,8 @@ const Sidebar = ({
 
   // Confirm delete conversation
   const confirmDeleteConversation = () => {
-    if (conversationToDelete) {
-      // TODO: Call parent component's delete function
-      console.log('Delete conversation:', conversationToDelete);
-      // For now, we'll just log it since we need the parent to handle the actual deletion
+    if (conversationToDelete && onDeleteConversation) {
+      onDeleteConversation(conversationToDelete);
     }
     setShowDeleteModal(false);
     setConversationToDelete(null);
@@ -321,6 +305,19 @@ const Sidebar = ({
           
           {/* Conversations List with Time Groups */}
           <div className="conversations-list">
+            {loading ? (
+              <div className="conversations-loading">
+                <div className="loading-spinner"></div>
+                <p>載入對話中...</p>
+              </div>
+            ) : conversations.length === 0 ? (
+              <div className="no-conversations">
+                <i className="fas fa-comments"></i>
+                <p>尚無對話記錄</p>
+                <p className="hint">點擊上方按鈕開始新對話</p>
+              </div>
+            ) : (
+              <>
             {groupedConversations.today.length > 0 && (
               <div className="time-group">
                 <div className="time-group-header">今天</div>
@@ -348,16 +345,18 @@ const Sidebar = ({
                 {groupedConversations.older.map(renderConversationItem)}
               </div>
             )}
+              </>
+            )}
           </div>
           
           <div className="sidebar-footer">
             <div className="user-menu-container" ref={userMenuRef}>
               <button className="user-info-btn" onClick={handleUserMenuToggle}>
-                <div className="user-avatar" style={{ backgroundColor: getAvatarColor() }}>
+                <div className="user-avatar" style={{ backgroundColor: avatarColor }}>
                   {userInitials}
                 </div>
                 <div className="user-info">
-                  <span className="user-name">{userData.name}</span>
+                  <span className="user-name">{userDisplayName}</span>
                 </div>
                 <i className={`fas fa-chevron-${showUserMenu ? 'up' : 'down'}`}></i>
               </button>
@@ -365,7 +364,7 @@ const Sidebar = ({
               {showUserMenu && (
                 <div className="user-menu">
                   <div className="user-menu-email">
-                    {userData.email}
+                    {user?.email || '未登入'}
                   </div>
                   <div className="user-menu-divider"></div>
                   <button 

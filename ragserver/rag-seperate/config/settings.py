@@ -35,6 +35,13 @@ class XAIConfig:
 
 
 @dataclass
+class SupabaseConfig:
+    url: str
+    key: str
+    schema_name: str
+
+
+@dataclass
 class APIConfig:
     host: str
     port: int
@@ -77,6 +84,14 @@ class Settings:
             model=os.getenv("XAI_MODEL", "grok-3"),
             base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1")
         )
+        
+        self.supabase = SupabaseConfig(
+            url=self._get_required_env("SUPABASE_URL"),
+            key=self._get_required_env("SUPABASE_KEY"),
+            schema_name=os.getenv("SUPABASE_SCHEMA", "lawschatter")
+        )
+        
+        self.llm_provider = os.getenv("LLM_PROVIDER", "grok")
         
         self.api = APIConfig(
             host=os.getenv("API_HOST", "0.0.0.0"),

@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Any, AsyncGenerator
-from domain.interfaces import IChatService, IRAGClient, ILLMProvider
+from domain.interfaces import IChatService, IRAGClient, ILLMProvider, IConversationRepository
 from entities.models import RAGSearchRequest, ChatMessage
 from config.settings import Settings
 
@@ -12,15 +12,20 @@ class ChatService(IChatService):
         self,
         rag_client: IRAGClient,
         llm_provider: ILLMProvider,
+        conversation_repository: IConversationRepository,
         settings: Settings
     ):
         self.rag_client = rag_client
         self.llm_provider = llm_provider
+        self.conversation_repository = conversation_repository
         self.settings = settings
     
     async def process_chat(
         self,
         question: str,
+        conversation_id: str,
+        token: str,
+        user_id: str,
         collection: str,
         mode: str,
         limit: int,
@@ -33,19 +38,26 @@ class ChatService(IChatService):
         rag_request = RAGSearchRequest(
             collection=collection,
             query_text=question,
+            conversation_id=conversation_id,
             mode=mode,
             limit=limit,
             score_threshold=score_threshold,
             streaming=False
         )
         
-        rag_response = await self.rag_client.search(rag_request)
+        rag_response = await self.rag_client.search(rag_request, token, user_id)
         logger.info(f"RAG 搜尋完成，共 {rag_response.total} 筆結果")
+        
+        history = await self.conversation_repository.get_conversation_messages(
+            token, conversation_id, limit=10
+        )
+        logger.info(f"取得歷史對話，共 {len(history)} 筆")
         
         sources = [
             {
                 "page_content": result.page_content,
-                "jid": result.jid
+                "jid": result.jid,
+                "defendants": result.defendants
             }
             for result in rag_response.results
         ]
@@ -54,11 +66,25 @@ class ChatService(IChatService):
         
         answer = await self.llm_provider.generate_response(
             messages=messages,
-            # reasoning_effort="high"
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            history_messages=history
         )
         logger.info(f"LLM 生成回應完成")
+        
+        await self.conversation_repository.save_message(
+            token, conversation_id, user_id, "user", question
+        )
+        await self.conversation_repository.save_message(
+            token, conversation_id, user_id, "assistant", answer
+        )
+        
+        if len(history) == 0:
+            suggested_title = await self._generate_conversation_title(question, answer)
+            await self.conversation_repository.update_conversation_title(
+                token, conversation_id, suggested_title
+            )
+        logger.info(f"對話記錄已儲存")
         
         return {
             "answer": answer,
@@ -188,9 +214,36 @@ class ChatService(IChatService):
         
         return messages
     
+    async def _generate_conversation_title(self, question: str) -> str:
+        title_prompt = [
+            ChatMessage(
+                role="system",
+                content="你是一個專業的對話標題生成助手。根據使用者的問題和助手的回答，生成一個簡短、精確的對話標題。標題應該：\n1. 不超過 20 個繁體中文字\n2. 準確概括對話的核心主題\n3. 使用法律專業術語（如適用）\n4. 直接輸出標題，不要加引號或其他符號"
+            ),
+            ChatMessage(
+                role="user",
+                content=f"使用者問題：{question}\n\n請生成一個簡短的對話標題："
+            )
+        ]
+        
+        title = await self.llm_provider.generate_response(
+            messages=title_prompt,
+            temperature=0.3,
+            max_tokens=50,
+            history_messages=None
+        )
+        
+        cleaned_title = title.strip().replace('"', '').replace("'", '').replace('\n', ' ')[:30]
+        logger.info(f"LLM 生成對話標題: {cleaned_title}")
+        
+        return cleaned_title or "新對話"
+    
     async def process_chat_stream(
         self,
         question: str,
+        conversation_id: str,
+        token: str,
+        user_id: str,
         collection: str,
         mode: str,
         limit: int,
@@ -203,6 +256,7 @@ class ChatService(IChatService):
         rag_request = RAGSearchRequest(
             collection=collection,
             query_text=question,
+            conversation_id=conversation_id,
             mode=mode,
             limit=limit,
             score_threshold=score_threshold,
@@ -210,7 +264,7 @@ class ChatService(IChatService):
         )
         
         sources = []
-        async for chunk in self.rag_client.search_stream(rag_request):
+        async for chunk in self.rag_client.search_stream(rag_request, token, user_id):
             if "status" in chunk:
                 yield {"type": "rag_status", "status": chunk["status"]}
             elif "type" in chunk and chunk["type"] == "final_results":
@@ -225,19 +279,42 @@ class ChatService(IChatService):
                     }
                     for result in results
                 ]
-                
-                # yield {"type": "rag_complete", "total_sources": len(sources)}
+        
+        history = await self.conversation_repository.get_conversation_messages(
+            token, conversation_id, limit=10
+        )
+        suggested_title = None
+        if len(history) == 0:
+            suggested_title = await self._generate_conversation_title(question)
+        logger.info(f"取得歷史對話，共 {len(history)} 筆")
         
         messages = self.build_prompt(question, sources)
         
         yield {"type": "llm_start", "status": "已獲取資料，開始準備回答"}
         
-        async for token in self.llm_provider.generate_response_stream(
+        full_answer = ""
+        async for token_content in self.llm_provider.generate_response_stream(
             messages=messages,
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            history_messages=history
         ):
-            yield {"type": "llm_token", "content": token}
+            full_answer += token_content
+            yield {"type": "llm_token", "content": token_content}
+        
+        await self.conversation_repository.save_message(
+            token, conversation_id, user_id, "user", question
+        )
+        await self.conversation_repository.save_message(
+            token, conversation_id, user_id, "assistant", full_answer
+        )
+        
+        if len(history) == 0:
+            # suggested_title = await self._generate_conversation_title(question, full_answer)
+            await self.conversation_repository.update_conversation_title(
+                token, conversation_id, suggested_title
+            )
+        logger.info(f"對話記錄已儲存")
         
         yield {
             "type": "complete",

@@ -73,7 +73,7 @@ function Register({ onRegister, onSwitchToLogin }) {
     clearError();
     
     try {
-      // 使用新的 API 方法註冊
+      // 使用 Supabase Auth API 註冊
       const result = await authAPI.register({
         email: formData.email,
         password: formData.password,
@@ -82,30 +82,41 @@ function Register({ onRegister, onSwitchToLogin }) {
       });
       
       if (result.success) {
-        // 註冊成功 - 處理後端回傳的資料
-        if (result.data.ok && result.data.data) {
-          // 註冊成功後自動登入
-          const loginSuccess = login(result.data.data);
+        // 檢查是否有 access_token (自動登入)
+        if (result.data.access_token) {
+          // 註冊成功並自動登入
+          const loginSuccess = login(result.data);
           if (loginSuccess) {
-            console.log('註冊並登入成功:', result.data.data);
+            console.log('註冊並登入成功:', result.data);
             // 呼叫父元件的 onRegister 函數
             if (onRegister) {
-              onRegister(result.data.data);
+              onRegister(result.data);
             }
           } else {
             setGeneralError('註冊成功，但登入失敗，請手動登入');
           }
+        } else if (result.data.message) {
+          // 註冊成功但需要驗證 email
+          console.log('註冊成功，需要驗證 email');
+          setGeneralError(result.data.message);
+          setTimeout(() => {
+            if (onSwitchToLogin) {
+              onSwitchToLogin();
+            }
+          }, 3000);
         } else {
-          // 註冊成功但沒有自動登入資料，切換到登入頁面
+          // 註冊成功，切換到登入頁面
           console.log('註冊成功，請登入');
           setGeneralError('註冊成功！請使用您的帳戶登入');
           setTimeout(() => {
-            onSwitchToLogin();
+            if (onSwitchToLogin) {
+              onSwitchToLogin();
+            }
           }, 2000);
         }
       } else {
         // API 已統一處理錯誤訊息
-        setGeneralError(result.error);
+        setGeneralError(result.error || '註冊失敗，請稍後再試');
       }
     } catch (error) {
       // 未預期的錯誤

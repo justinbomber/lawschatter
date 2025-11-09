@@ -1,8 +1,9 @@
 import logging
 from typing import Dict, Any, AsyncGenerator
 from entities.models import SearchRequest, SearchResponse, CollectionInfo, HealthStatus
-from domain.interfaces import IQdrantClient, IDocumentSearchOrchestrator
+from domain.interfaces import IQdrantClient, IDocumentSearchOrchestrator, IConversationRepository
 from config.settings import Settings
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -12,45 +13,81 @@ class SearchController:
         self,
         qdrant_client: IQdrantClient,
         document_search_orchestrator: IDocumentSearchOrchestrator,
+        conversation_repository: IConversationRepository,
         settings: Settings
     ):
         self.qdrant_client = qdrant_client
         self.document_search_orchestrator = document_search_orchestrator
+        self.conversation_repository = conversation_repository
         self.settings = settings
 
-    async def search_documents(self, request: SearchRequest) -> SearchResponse:
-        logic = getattr(request, 'logic', "AND")
+    async def search_documents(self, request: SearchRequest, token: str, user_id: str) -> SearchResponse:
+        has_access = await self.conversation_repository.verify_user_conversation_access(
+            token, user_id, request.conversation_id
+        )
+        
+        if not has_access:
+            raise HTTPException(status_code=403, detail="無權訪問此對話")
+        
+        history = await self.conversation_repository.get_conversation_messages(
+            token, request.conversation_id, limit=10
+        )
+        
+        collection = "embedding-seperate"
+        mode = "hybrid"
+        limit = 5
+        score_threshold = 0.95
+        logic = "AND"
+        
         max_retries = 3
         retries = 0
         while retries < max_retries:
             simplified_results = await self.document_search_orchestrator.orchestrate_search(
-                collection=request.collection,
+                collection=collection,
                 query_text=request.query_text,
-                mode=request.mode,
-                limit=request.limit,
-                logic=logic
+                mode=mode,
+                limit=limit,
+                logic=logic,
+                history_messages=history
             )
             retries += 1
             if len(simplified_results) > 0:
                 break
             else:
                 continue
+        
         return SearchResponse(
             results=simplified_results,
             total=len(simplified_results),
             query=request.query_text,
-            mode=request.mode,
-            collection=request.collection
+            mode=mode,
+            collection=collection
         )
     
-    async def search_documents_stream(self, request: SearchRequest) -> AsyncGenerator[Dict[str, Any], None]:
-        logic = getattr(request, 'logic', "AND")
+    async def search_documents_stream(self, request: SearchRequest, token: str, user_id: str) -> AsyncGenerator[Dict[str, Any], None]:
+        has_access = await self.conversation_repository.verify_user_conversation_access(
+            token, user_id, request.conversation_id
+        )
+        
+        if not has_access:
+            raise HTTPException(status_code=403, detail="無權訪問此對話")
+        
+        history = await self.conversation_repository.get_conversation_messages(
+            token, request.conversation_id, limit=10
+        )
+        
+        collection = "embedding-seperate"
+        mode = "hybrid"
+        limit = 5
+        logic = "AND"
+        
         async for chunk in self.document_search_orchestrator.orchestrate_search_stream(
-            collection=request.collection,
+            collection=collection,
             query_text=request.query_text,
-            mode=request.mode,
-            limit=request.limit,
-            logic=logic
+            mode=mode,
+            limit=limit,
+            logic=logic,
+            history_messages=history
         ):
             yield chunk
     

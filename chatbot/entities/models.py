@@ -4,18 +4,20 @@ from pydantic import BaseModel, Field
 
 class ChatRequest(BaseModel):
     question: str = Field(..., description="使用者的問題")
-    collection: Optional[str] = Field(None, description="指定的集合名稱")
-    mode: Optional[str] = Field(None, description="搜尋模式：dense/sparse/hybrid")
-    limit: Optional[int] = Field(None, description="返回結果數量上限", ge=1, le=100)
-    score_threshold: Optional[float] = Field(None, description="最低分數閾值", ge=0, le=1)
-    temperature: Optional[float] = Field(None, description="LLM 溫度參數", ge=0, le=2)
-    max_tokens: Optional[int] = Field(None, description="LLM 最大生成 token 數", ge=1)
+    # collection: Optional[str] = Field(None, description="指定的集合名稱")
+    # mode: Optional[str] = Field(None, description="搜尋模式：dense/sparse/hybrid")
+    # limit: Optional[int] = Field(None, description="返回結果數量上限", ge=1, le=100)
+    # score_threshold: Optional[float] = Field(None, description="最低分數閾值", ge=0, le=1)
+    # temperature: Optional[float] = Field(None, description="LLM 溫度參數", ge=0, le=2)
+    # max_tokens: Optional[int] = Field(None, description="LLM 最大生成 token 數", ge=1)
+    conversation_id: str = Field(..., description="對話 ID")
     streaming: bool = Field(False, description="是否使用 SSE 串流回復")
 
 
 class RAGSearchRequest(BaseModel):
     collection: str
     query_text: str
+    conversation_id: str
     mode: str
     limit: int
     score_threshold: float
@@ -25,6 +27,7 @@ class RAGSearchRequest(BaseModel):
 class RAGSearchResult(BaseModel):
     page_content: str
     jid: str
+    defendants: List[str] = []
 
 
 class RAGSearchResponse(BaseModel):

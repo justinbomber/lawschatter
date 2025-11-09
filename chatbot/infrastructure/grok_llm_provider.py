@@ -1,7 +1,7 @@
 import logging
 from typing import List, AsyncGenerator
 from openai import AsyncOpenAI
-from domain.interfaces import ILLMProvider
+from domain.interfaces import ILLMProvider, Message
 from entities.models import ChatMessage
 from config.settings import Settings
 
@@ -29,14 +29,22 @@ class GrokLLMProvider(ILLMProvider):
         self,
         messages: List[ChatMessage],
         temperature: float,
-        max_tokens: int
+        max_tokens: int,
+        history_messages: List[Message] = None
     ) -> str:
         logger.info(f"呼叫 Grok LLM: model={self.model}, temperature={temperature}")
         
-        grok_messages = [
-            {"role": msg.role, "content": msg.content}
-            for msg in messages
-        ]
+        grok_messages = []
+        
+        if history_messages:
+            for msg in history_messages[-10:]:
+                grok_messages.append({
+                    "role": "user" if msg.sender_type == "user" else "assistant",
+                    "content": msg.content
+                })
+        
+        for msg in messages:
+            grok_messages.append({"role": msg.role, "content": msg.content})
         
         response = await self.client.chat.completions.create(
             model=self.model,
@@ -51,14 +59,22 @@ class GrokLLMProvider(ILLMProvider):
         self,
         messages: List[ChatMessage],
         temperature: float,
-        max_tokens: int
+        max_tokens: int,
+        history_messages: List[Message] = None
     ) -> AsyncGenerator[str, None]:
         logger.info(f"呼叫 Grok LLM (串流): model={self.model}, temperature={temperature}")
         
-        grok_messages = [
-            {"role": msg.role, "content": msg.content}
-            for msg in messages
-        ]
+        grok_messages = []
+        
+        if history_messages:
+            for msg in history_messages[-10:]:
+                grok_messages.append({
+                    "role": "user" if msg.sender_type == "user" else "assistant",
+                    "content": msg.content
+                })
+        
+        for msg in messages:
+            grok_messages.append({"role": msg.role, "content": msg.content})
         
         stream = await self.client.chat.completions.create(
             model=self.model,

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { getUserInitials, getUserDisplayName, getAvatarColor } from '../utils/userUtils';
 import './ChatArea.css';
 import RagSelector from './RagSelector.jsx';
 import ReferencePanel from './ReferencePanel.jsx';
@@ -10,6 +12,7 @@ import * as MarkdownComponents from './MarkdownComponents.jsx';
 
 const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [inputMessage, setInputMessage] = useState('');
   const [showRagSelector, setShowRagSelector] = useState(false);
   const [hasRagSettings, setHasRagSettings] = useState(false);
@@ -204,6 +207,11 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
     setShowReferencePanel(true);
   };
 
+  // 獲取用戶顯示資訊
+  const userDisplayName = getUserDisplayName(user);
+  const userInitials = getUserInitials(user?.display_name, user?.username, user?.email);
+  const avatarColor = getAvatarColor(user?.user_id || user?.email);
+
   return (
     <div className={`chat-area ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <div className="chat-main-content">
@@ -224,8 +232,8 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
               <div className="message-header">
                 <div className="message-avatar">
                   {message.type === 'user' ? (
-                    <div className="avatar user-avatar" style={{ backgroundColor: '#10a37f' }}>
-                      JU
+                    <div className="avatar user-avatar" style={{ backgroundColor: avatarColor }}>
+                      {userInitials}
                     </div>
                   ) : (
                     <div className="avatar ai-avatar">
@@ -234,7 +242,7 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
                   )}
                 </div>
                 <div className="message-user-name">
-                  {message.type === 'user' ? 'User' : 'AI Assistant'}
+                  {message.type === 'user' ? userDisplayName : 'lawschatter'}
                 </div>
               </div>
               <div className="message-bubble">

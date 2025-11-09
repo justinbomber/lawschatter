@@ -1,9 +1,9 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 import instructor
 from openai import AsyncOpenAI
 from entities.filters import Filter
-from domain.interfaces import ILLMExtractionService
+from domain.interfaces import ILLMExtractionService, Message
 from config.settings import Settings
 
 
@@ -27,9 +27,24 @@ class GrokExtractionService(ILLMExtractionService):
         self.client = instructor.from_openai(base_client, mode=instructor.Mode.JSON)
         self.settings = settings
     
-    async def extract_structured_filter(self, user_question: str) -> Dict[str, Any]:
+    async def extract_structured_filter(self, user_question: str, history_messages: List[Message] = None) -> Dict[str, Any]:
         system_prompt = """
-你是法律判決查詢的過濾條件抽取助理。根據使用者問題，抽取出過濾條件並輸出 JSON。
+你是法律判決查詢的過濾條件抽取助理。根據使用者問題和歷史對話，抽取出過濾條件並輸出 JSON。
+
+如果提供了歷史對話：
+1. 當前問題若包含代詞（如「這個」「那個」「它」「他」「她」等），根據歷史對話替換為具體內容
+2. 當前問題若是延續性問題（如「再多一點」「詳細說明」「其他的呢」「有緩刑的呢」），結合歷史對話理解完整意圖
+3. 當前問題若已經完整且獨立，直接使用當前問題
+4. 保持法律專業術語的準確性
+
+範例：
+歷史：使用者問「詐欺罪的判決」，助理回覆「找到相關判決」
+當前：「有緩刑的呢」
+理解為：詐欺罪且有緩刑的判決
+
+歷史：使用者問「車手的判決」
+當前：「這個角色的量刑」
+理解為：車手角色的量刑判決
 
 輸出結構：
 - 可包含：confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval。
@@ -77,6 +92,7 @@ class GrokExtractionService(ILLMExtractionService):
 - 僅輸出問題中明示條件；不推測/添加/預設。
 - 未明示欄位不填。
 - 所有條件須放入 metadata 或類別；不漏掉任何條件。
+- limit 欄位必填：根據問題複雜度決定返回結果數量（範圍 1-20），簡單問題填 3-5，一般問題填 5-10，複雜問題填 10-20。
 
 量化欄位優先原則（重要！）：
 - 若某條件可用量化欄位表達，就「只」填量化欄位，「不」填描述性類別。
@@ -120,12 +136,20 @@ class GrokExtractionService(ILLMExtractionService):
 僅輸出 JSON，無多餘文字。
 """
         
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        if history_messages:
+            for msg in history_messages[-10:]:
+                if msg.sender_type == "user":
+                    messages.append({"role": "user", "content": msg.content})
+                elif msg.sender_type == "assistant":
+                    messages.append({"role": "assistant", "content": msg.content})
+        
+        messages.append({"role": "user", "content": user_question})
+        
         result = await self.client.chat.completions.create(
             model=self.settings.xai.model,
-            messages=[
-                {"role": "system", "content": system_prompt}, 
-                {"role": "user", "content": user_question}
-            ],
+            messages=messages,
             response_model=Filter,
             timeout=120,
             max_retries=2

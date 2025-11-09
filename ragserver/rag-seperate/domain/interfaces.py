@@ -1,6 +1,28 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from qdrant_client import models
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass
+class Message:
+    message_id: str
+    conversation_id: str
+    user_id: str
+    sender_type: str
+    content: str
+    created_at: datetime
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "message_id": self.message_id,
+            "conversation_id": self.conversation_id,
+            "user_id": self.user_id,
+            "sender_type": self.sender_type,
+            "content": self.content,
+            "created_at": self.created_at.isoformat() if isinstance(self.created_at, datetime) else self.created_at
+        }
 
 
 class IEmbeddingProvider(ABC):
@@ -43,13 +65,13 @@ class ISearchService(ABC):
 
 class ILLMExtractionService(ABC):
     @abstractmethod
-    async def extract_structured_filter(self, user_question: str) -> Dict[str, Any]:
+    async def extract_structured_filter(self, user_question: str, history_messages: List['Message'] = None) -> Dict[str, Any]:
         pass
 
 
 class IFilterService(ABC):
     @abstractmethod
-    async def extract_filter_conditions(self, user_question: str) -> List[Dict[str, Any]]:
+    async def extract_filter_conditions(self, user_question: str, history_messages: List['Message'] = None) -> List[Dict[str, Any]]:
         pass
     
     @abstractmethod
@@ -81,7 +103,20 @@ class IDocumentSearchOrchestrator(ABC):
         query_text: str,
         mode: str,
         limit: int,
-        logic: str = "AND"
+        logic: str = "AND",
+        history_messages: List['Message'] = None
     ) -> List[Dict[str, Any]]:
         pass
+
+
+class IConversationRepository(ABC):
+    @abstractmethod
+    async def get_conversation_messages(self, token: str, conversation_id: str, limit: int = 10) -> List[Message]:
+        pass
+    
+    @abstractmethod
+    async def verify_user_conversation_access(self, token: str, user_id: str, conversation_id: str) -> bool:
+        pass
+
+
 

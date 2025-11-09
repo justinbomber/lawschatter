@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Any, Set
 from qdrant_client import models
 from infrastructure.tokenizer import JiebaLawTokenizer
-from domain.interfaces import IFilterService, IQdrantClient, ILLMExtractionService
+from domain.interfaces import IFilterService, IQdrantClient, ILLMExtractionService, Message
 from config.settings import Settings
 
 
@@ -26,8 +26,8 @@ class FilterService(IFilterService):
             query_hmm=True,
         )
     
-    async def extract_filter_conditions(self, user_question: str) -> List[Dict[str, Any]]:
-        structured_output = await self.llm_extraction_service.extract_structured_filter(user_question)
+    async def extract_filter_conditions(self, user_question: str, history_messages: List[Message] = None) -> List[Dict[str, Any]]:
+        structured_output = await self.llm_extraction_service.extract_structured_filter(user_question, history_messages)
         
         if "defendants" in structured_output and isinstance(structured_output["defendants"], list):
             if len(structured_output["defendants"]) > 0:

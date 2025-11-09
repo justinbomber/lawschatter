@@ -9,6 +9,7 @@ export const chatAPI = {
    * 使用 SSE 串流方式發送聊天訊息
    * @param {Object} messageData - 訊息資料
    * @param {string} messageData.question - 問題內容
+   * @param {string} messageData.conversation_id - 對話 ID
    * @param {string} messageData.collection - 集合名稱
    * @param {string} messageData.mode - 搜尋模式
    * @param {number} messageData.limit - 結果數量限制
@@ -31,13 +32,21 @@ export const chatAPI = {
     } = callbacks;
 
     try {
+      const token = localStorage.getItem('supabase_access_token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${CHAT_API_URL}/chat/completion`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           question: messageData.question,
+          conversation_id: messageData.conversation_id,
           collection: messageData.collection || 'embedding-seperate',
           mode: messageData.mode || 'hybrid',
           limit: messageData.limit || 10,
@@ -98,13 +107,21 @@ export const chatAPI = {
    */
   sendMessage: async (messageData) => {
     try {
+      const token = localStorage.getItem('supabase_access_token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${CHAT_API_URL}/chat/completion`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           question: messageData.question,
+          conversation_id: messageData.conversation_id,
           collection: messageData.collection || 'embedding-seperate',
           mode: messageData.mode || 'hybrid',
           limit: messageData.limit || 10,

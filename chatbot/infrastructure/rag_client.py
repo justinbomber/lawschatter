@@ -15,43 +15,53 @@ class RAGClient(IRAGClient):
         self.base_url = settings.rag_server.url
         self.timeout = settings.rag_server.timeout
     
-    async def search(self, request: RAGSearchRequest) -> RAGSearchResponse:
+    async def search(self, request: RAGSearchRequest, token: str, user_id: str) -> RAGSearchResponse:
         url = f"{self.base_url}/search"
         
         payload = {
             "collection": request.collection,
             "query_text": request.query_text,
+            "conversation_id": request.conversation_id,
             "mode": request.mode,
             "limit": request.limit,
             "score_threshold": request.score_threshold,
             "streaming": False
         }
         
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        
         logger.info(f"呼叫 RAG 搜尋服務: {url}")
         
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(url, json=payload)
+            response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
         
         return RAGSearchResponse(**data)
     
-    async def search_stream(self, request: RAGSearchRequest) -> AsyncGenerator[Dict[str, Any], None]:
+    async def search_stream(self, request: RAGSearchRequest, token: str, user_id: str) -> AsyncGenerator[Dict[str, Any], None]:
         url = f"{self.base_url}/search"
         
         payload = {
             "collection": request.collection,
             "query_text": request.query_text,
+            "conversation_id": request.conversation_id,
             "mode": request.mode,
             "limit": request.limit,
             "score_threshold": request.score_threshold,
             "streaming": True
         }
         
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        
         logger.info(f"呼叫 RAG 搜尋服務 (串流): {url}")
         
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            async with client.stream("POST", url, json=payload) as response:
+            async with client.stream("POST", url, json=payload, headers=headers) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):

@@ -20,16 +20,19 @@ class ChatController:
         self.llm_provider = llm_provider
         self.settings = settings
     
-    async def chat_completion(self, request: ChatRequest) -> ChatResponse:
-        collection = request.collection or self.settings.rag_search.collection
-        mode = request.mode or self.settings.rag_search.mode
-        limit = request.limit or self.settings.rag_search.limit
-        score_threshold = request.score_threshold or self.settings.rag_search.score_threshold
-        temperature = request.temperature or self.settings.llm.temperature
-        max_tokens = request.max_tokens or self.settings.llm.max_tokens
+    async def chat_completion(self, request: ChatRequest, token: str, user_id: str) -> ChatResponse:
+        collection = self.settings.rag_search.collection
+        mode = self.settings.rag_search.mode
+        limit = self.settings.rag_search.limit
+        score_threshold = self.settings.rag_search.score_threshold
+        temperature = self.settings.llm.temperature
+        max_tokens = self.settings.llm.max_tokens
         
         result = await self.chat_service.process_chat(
             question=request.question,
+            conversation_id=request.conversation_id,
+            token=token,
+            user_id=user_id,
             collection=collection,
             mode=mode,
             limit=limit,
@@ -40,16 +43,19 @@ class ChatController:
         
         return ChatResponse(**result)
     
-    async def chat_completion_stream(self, request: ChatRequest) -> AsyncGenerator[Dict[str, Any], None]:
-        collection = request.collection or self.settings.rag_search.collection
-        mode = request.mode or self.settings.rag_search.mode
-        limit = request.limit or self.settings.rag_search.limit
-        score_threshold = request.score_threshold or self.settings.rag_search.score_threshold
-        temperature = request.temperature or self.settings.llm.temperature
-        max_tokens = request.max_tokens or self.settings.llm.max_tokens
+    async def chat_completion_stream(self, request: ChatRequest, token: str, user_id: str) -> AsyncGenerator[Dict[str, Any], None]:
+        collection = self.settings.rag_search.collection
+        mode = self.settings.rag_search.mode
+        limit = self.settings.rag_search.limit
+        score_threshold = self.settings.rag_search.score_threshold
+        temperature = self.settings.llm.temperature
+        max_tokens = self.settings.llm.max_tokens
         
         async for chunk in self.chat_service.process_chat_stream(
             question=request.question,
+            conversation_id=request.conversation_id,
+            token=token,
+            user_id=user_id,
             collection=collection,
             mode=mode,
             limit=limit,

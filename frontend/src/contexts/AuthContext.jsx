@@ -73,8 +73,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const loadStoredAuth = () => {
       try {
-        const storedToken = localStorage.getItem('access_token');
-        const storedUser = localStorage.getItem('user_data');
+        const storedToken = localStorage.getItem('supabase_access_token');
+        const storedRefreshToken = localStorage.getItem('supabase_refresh_token');
+        const storedUser = localStorage.getItem('supabase_user_data');
         
         if (storedToken && storedUser) {
           const userData = JSON.parse(storedUser);
@@ -88,10 +89,14 @@ export const AuthProvider = ({ children }) => {
                 token: storedToken
               }
             });
+          } else if (storedRefreshToken) {
+            console.log('Token 過期，需要重新整理');
+            dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
           } else {
-            // Token 過期，清除存儲的資料
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('user_data');
+            // Token 過期且無 refresh token，清除存儲的資料
+            localStorage.removeItem('supabase_access_token');
+            localStorage.removeItem('supabase_refresh_token');
+            localStorage.removeItem('supabase_user_data');
             dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
           }
         } else {
@@ -100,8 +105,9 @@ export const AuthProvider = ({ children }) => {
       } catch (error) {
         console.error('載入存儲的認證資訊時發生錯誤:', error);
         // 清除可能損壞的資料
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user_data');
+        localStorage.removeItem('supabase_access_token');
+        localStorage.removeItem('supabase_refresh_token');
+        localStorage.removeItem('supabase_user_data');
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
       }
     };
@@ -127,18 +133,24 @@ export const AuthProvider = ({ children }) => {
   // 登入函數
   const login = (responseData) => {
     try {
-      const { user_id, email, access_token } = responseData;
+      const { user_id, email, access_token, refresh_token, user } = responseData;
       
+      // 處理 Supabase 用戶資料
       const userData = {
-        user_id,
-        email,
+        user_id: user_id || user?.id,
+        email: email || user?.email,
+        username: user?.user_metadata?.username || email?.split('@')[0],
+        display_name: user?.user_metadata?.display_name || user?.user_metadata?.username || email?.split('@')[0],
         // 從 JWT token 中解析更多用戶資訊
         ...parseJWTUserData(access_token)
       };
 
-      // 存儲到 localStorage
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('user_data', JSON.stringify(userData));
+      // 存儲到 localStorage (使用 Supabase 專用的 key)
+      localStorage.setItem('supabase_access_token', access_token);
+      if (refresh_token) {
+        localStorage.setItem('supabase_refresh_token', refresh_token);
+      }
+      localStorage.setItem('supabase_user_data', JSON.stringify(userData));
 
       // 更新 context 狀態
       dispatch({
@@ -195,7 +207,10 @@ export const AuthProvider = ({ children }) => {
 
   // 登出函數
   const logout = () => {
-    // 清除 localStorage
+    // 清除 localStorage (包含 Supabase 相關的 keys)
+    localStorage.removeItem('supabase_access_token');
+    localStorage.removeItem('supabase_refresh_token');
+    localStorage.removeItem('supabase_user_data');
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_data');
     
@@ -206,7 +221,7 @@ export const AuthProvider = ({ children }) => {
   // 更新用戶資訊
   const updateUser = (userData) => {
     const updatedUser = { ...state.user, ...userData };
-    localStorage.setItem('user_data', JSON.stringify(updatedUser));
+    localStorage.setItem('supabase_user_data', JSON.stringify(updatedUser));
     dispatch({
       type: AUTH_ACTIONS.SET_USER,
       payload: updatedUser
