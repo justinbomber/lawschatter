@@ -1,5 +1,6 @@
 .app {
   display: flex;
+  flex-direction: row;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -39,7 +40,7 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .app {
-    flex-direction: column;
+    flex-direction: row;
   }
 }
 

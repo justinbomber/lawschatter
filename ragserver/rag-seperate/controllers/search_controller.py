@@ -22,16 +22,22 @@ class SearchController:
         self.settings = settings
 
     async def search_documents(self, request: SearchRequest, token: str, user_id: str) -> SearchResponse:
-        has_access = await self.conversation_repository.verify_user_conversation_access(
-            token, user_id, request.conversation_id
-        )
+        history = []
         
-        if not has_access:
-            raise HTTPException(status_code=403, detail="無權訪問此對話")
-        
-        history = await self.conversation_repository.get_conversation_messages(
-            token, request.conversation_id, limit=10
-        )
+        if request.conversation_id:
+            has_access = await self.conversation_repository.verify_user_conversation_access(
+                token, user_id, request.conversation_id
+            )
+            
+            if not has_access:
+                raise HTTPException(status_code=403, detail="無權訪問此對話")
+            
+            history = await self.conversation_repository.get_conversation_messages(
+                token, request.conversation_id, limit=10
+            )
+            logger.info(f"取得對話 {request.conversation_id} 的 {len(history)} 筆歷史訊息")
+        else:
+            logger.info("沒有提供 conversation_id，使用空歷史記錄進行搜尋")
         
         collection = "embedding-seperate"
         mode = "hybrid"
@@ -65,16 +71,22 @@ class SearchController:
         )
     
     async def search_documents_stream(self, request: SearchRequest, token: str, user_id: str) -> AsyncGenerator[Dict[str, Any], None]:
-        has_access = await self.conversation_repository.verify_user_conversation_access(
-            token, user_id, request.conversation_id
-        )
+        history = []
         
-        if not has_access:
-            raise HTTPException(status_code=403, detail="無權訪問此對話")
-        
-        history = await self.conversation_repository.get_conversation_messages(
-            token, request.conversation_id, limit=10
-        )
+        if request.conversation_id:
+            has_access = await self.conversation_repository.verify_user_conversation_access(
+                token, user_id, request.conversation_id
+            )
+            
+            if not has_access:
+                raise HTTPException(status_code=403, detail="無權訪問此對話")
+            
+            history = await self.conversation_repository.get_conversation_messages(
+                token, request.conversation_id, limit=10
+            )
+            logger.info(f"取得對話 {request.conversation_id} 的 {len(history)} 筆歷史訊息")
+        else:
+            logger.info("沒有提供 conversation_id，使用空歷史記錄進行串流搜尋")
         
         collection = "embedding-seperate"
         mode = "hybrid"

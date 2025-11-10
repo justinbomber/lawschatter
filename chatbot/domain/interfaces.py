@@ -128,6 +128,10 @@ class IConversationRepository(ABC):
         pass
     
     @abstractmethod
+    async def create_conversation(self, token: str, user_id: str, title: str = "新對話") -> str:
+        pass
+    
+    @abstractmethod
     async def update_conversation_title(self, token: str, conversation_id: str, title: str) -> None:
         pass
 

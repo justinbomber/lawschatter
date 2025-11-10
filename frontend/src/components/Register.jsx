@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import './Login.css'; // 使用相同的樣式文件
+import './Login.css';
 import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { authAPI } from '../api';
 
-function Register({ onRegister, onSwitchToLogin }) {
+function Register() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { login, clearError, error: authError } = useAuth();
   const [formData, setFormData] = useState({
@@ -88,31 +90,18 @@ function Register({ onRegister, onSwitchToLogin }) {
           const loginSuccess = login(result.data);
           if (loginSuccess) {
             console.log('註冊並登入成功:', result.data);
-            // 呼叫父元件的 onRegister 函數
-            if (onRegister) {
-              onRegister(result.data);
-            }
+            navigate('/c/new');
           } else {
             setGeneralError('註冊成功，但登入失敗，請手動登入');
           }
         } else if (result.data.message) {
-          // 註冊成功但需要驗證 email
           console.log('註冊成功，需要驗證 email');
           setGeneralError(result.data.message);
-          setTimeout(() => {
-            if (onSwitchToLogin) {
-              onSwitchToLogin();
-            }
-          }, 3000);
+          setTimeout(() => navigate('/login'), 3000);
         } else {
-          // 註冊成功，切換到登入頁面
           console.log('註冊成功，請登入');
           setGeneralError('註冊成功！請使用您的帳戶登入');
-          setTimeout(() => {
-            if (onSwitchToLogin) {
-              onSwitchToLogin();
-            }
-          }, 2000);
+          setTimeout(() => navigate('/login'), 2000);
         }
       } else {
         // API 已統一處理錯誤訊息
@@ -264,7 +253,7 @@ function Register({ onRegister, onSwitchToLogin }) {
             <button 
               type="button" 
               className="register-link"
-              onClick={onSwitchToLogin}
+              onClick={() => navigate('/login')}
             >
               {t('auth.register.signIn', '立即登入')}
             </button>

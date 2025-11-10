@@ -2,6 +2,8 @@
  * 聊天 API - 支援 SSE 串流
  */
 
+import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
+
 const CHAT_API_URL = 'http://localhost:9500';
 
 export const chatAPI = {
@@ -32,7 +34,12 @@ export const chatAPI = {
     } = callbacks;
 
     try {
-      const token = localStorage.getItem('supabase_access_token');
+      if (!validateTokenBeforeRequest()) {
+        onError(new Error('Token 已過期'));
+        return;
+      }
+      
+      const token = getValidToken();
       const headers = {
         'Content-Type': 'application/json',
       };
@@ -58,6 +65,17 @@ export const chatAPI = {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('supabase_access_token');
+          localStorage.removeItem('supabase_refresh_token');
+          localStorage.removeItem('supabase_user_data');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user_data');
+          
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -107,7 +125,14 @@ export const chatAPI = {
    */
   sendMessage: async (messageData) => {
     try {
-      const token = localStorage.getItem('supabase_access_token');
+      if (!validateTokenBeforeRequest()) {
+        return {
+          success: false,
+          error: 'Token 已過期'
+        };
+      }
+      
+      const token = getValidToken();
       const headers = {
         'Content-Type': 'application/json',
       };
@@ -133,6 +158,17 @@ export const chatAPI = {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('supabase_access_token');
+          localStorage.removeItem('supabase_refresh_token');
+          localStorage.removeItem('supabase_user_data');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user_data');
+          
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import './Login.css';
 import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { authAPI } from '../api';
 
-function Login({ onLogin, onSwitchToRegister }) {
+function Login() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { login, clearError, error: authError } = useAuth();
   const [formData, setFormData] = useState({
@@ -61,10 +63,7 @@ function Login({ onLogin, onSwitchToRegister }) {
         const loginSuccess = login(result.data);
         if (loginSuccess) {
           console.log('登入成功:', result.data);
-          // 呼叫父元件的 onLogin 函數
-          if (onLogin) {
-            onLogin();
-          }
+          navigate('/c/new');
         } else {
           setError('登入資料處理失敗，請重試');
         }
@@ -197,7 +196,7 @@ function Login({ onLogin, onSwitchToRegister }) {
             <button 
               type="button" 
               className="register-link"
-              onClick={onSwitchToRegister}
+              onClick={() => navigate('/register')}
             >
               {t('auth.login.signUp', '立即註冊')}
             </button>

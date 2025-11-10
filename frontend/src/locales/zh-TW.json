@@ -5,7 +5,11 @@
   "sidebar": {
     "title": "歷史對話",
     "newConversation": "新增對話",
+    "newChat": "新對話",
     "userSettings": "使用者設定",
+    "share": "分享",
+    "rename": "重新命名",
+    "delete": "刪除",
     "conversations": {
       "yesterday": "昨天的討論",
       "aiPrompt": "AI 生成提示",
@@ -17,6 +21,18 @@
       "helpFaq": "說明與常見問題",
       "settings": "設定",
       "logout": "登出"
+    },
+    "deleteModal": {
+      "title": "刪除對話",
+      "message": "確定要刪除這個對話嗎？此操作無法復原。",
+      "cancel": "取消",
+      "confirm": "刪除"
+    },
+    "shareModal": {
+      "title": "分享對話",
+      "description": "任何擁有此連結的人都可以查看這個對話的快照",
+      "copy": "複製連結",
+      "copied": "已複製"
     }
   },
   "chat": {
@@ -24,6 +40,9 @@
     "inputPlaceholder": "輸入您的訊息...",
     "userMessage": "請生成一個提示詞",
     "assistantResponse": "根據您的要求，我生成了以下提示詞。這個提示詞可以幫助您更好地與AI進行互動，並獲得更準確和有用的回應。您可以根據具體需求進行調整和修改。",
+    "messageTooLong": "訊息過長，請縮短至 5000 字元以內",
+    "createConversationError": "建立對話失敗，請重試",
+    "connectionError": "連線錯誤，請檢查網路後重試",
     "actions": {
       "copy": "複製",
       "regenerate": "再生",
@@ -128,5 +147,25 @@
     "support": "技術支援",
     "rights": "版權所有",
     "powered": "Service online"
+  },
+  "notAllowed": {
+    "title": "存取受限",
+    "defaultMessage": "您無權存取此內容",
+    "forbidden": "您沒有權限查看此對話",
+    "notFound": "找不到此對話",
+    "redirecting": "{{seconds}} 秒後將自動返回首頁",
+    "goBack": "立即返回"
+  },
+  "share": {
+    "loading": "載入分享對話中...",
+    "notFound": "此分享連結不存在或已過期",
+    "sharedConversation": "分享對話",
+    "untitled": "未命名對話",
+    "goHome": "返回首頁",
+    "noMessages": "此對話沒有任何訊息",
+    "user": "使用者",
+    "assistant": "AI 助手",
+    "footerText": "想要開始自己的對話嗎？",
+    "tryIt": "立即試用"
   }
 }

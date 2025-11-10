@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
 
 const SUPABASE_URL = 'https://supalaw.mooo.com';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
@@ -18,7 +19,13 @@ const supabaseAuthClient = axios.create({
 
 supabaseAuthClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('supabase_access_token');
+    const isLoginOrSignup = config.url?.includes('/token') || config.url?.includes('/signup');
+    
+    if (!isLoginOrSignup && !validateTokenBeforeRequest()) {
+      return Promise.reject(new Error('Token 已過期'));
+    }
+    
+    const token = getValidToken();
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -38,6 +45,19 @@ supabaseAuthClient.interceptors.response.use(
   },
   (error) => {
     console.error('Supabase API 錯誤:', error.response?.status, error.response?.data);
+    
+    if (error.response?.status === 401) {
+      localStorage.removeItem('supabase_access_token');
+      localStorage.removeItem('supabase_refresh_token');
+      localStorage.removeItem('supabase_user_data');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_data');
+      
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -107,13 +127,50 @@ export const supabaseRestClient = axios.create({
 
 supabaseRestClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('supabase_access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const isPublicEndpoint = (config.url?.includes('/shared_conversations') || 
+                              config.url?.includes('/shared_messages')) &&
+                             config.method?.toLowerCase() === 'get';
+    
+    if (!isPublicEndpoint) {
+      if (!validateTokenBeforeRequest()) {
+        return Promise.reject(new Error('Token 已過期'));
+      }
+      
+      const token = getValidToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
+    
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+supabaseRestClient.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      const isPublicEndpoint = error.config?.url?.includes('/shared_conversations') || 
+                               error.config?.url?.includes('/shared_messages');
+      
+      if (!isPublicEndpoint) {
+        localStorage.removeItem('supabase_access_token');
+        localStorage.removeItem('supabase_refresh_token');
+        localStorage.removeItem('supabase_user_data');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_data');
+        
+        if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/share/')) {
+          window.location.href = '/login';
+        }
+      }
+    }
+    
     return Promise.reject(error);
   }
 );

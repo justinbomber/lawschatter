@@ -35,6 +35,11 @@ class ChatService(IChatService):
     ) -> Dict[str, Any]:
         logger.info(f"處理聊天請求: {question}")
         
+        is_new_conversation = False
+        if not conversation_id:
+            is_new_conversation = True
+            logger.info("沒有提供 conversation_id，將在獲得標題後創建新對話")
+        
         rag_request = RAGSearchRequest(
             collection=collection,
             query_text=question,
@@ -48,9 +53,11 @@ class ChatService(IChatService):
         rag_response = await self.rag_client.search(rag_request, token, user_id)
         logger.info(f"RAG 搜尋完成，共 {rag_response.total} 筆結果")
         
-        history = await self.conversation_repository.get_conversation_messages(
-            token, conversation_id, limit=10
-        )
+        history = []
+        if conversation_id:
+            history = await self.conversation_repository.get_conversation_messages(
+                token, conversation_id, limit=10
+            )
         logger.info(f"取得歷史對話，共 {len(history)} 筆")
         
         sources = [
@@ -61,6 +68,17 @@ class ChatService(IChatService):
             }
             for result in rag_response.results
         ]
+        
+        suggested_title = None
+        if len(history) == 0:
+            suggested_title = await self._generate_conversation_title(question)
+            logger.info(f"生成對話標題: {suggested_title}")
+        
+        if is_new_conversation:
+            conversation_id = await self.conversation_repository.create_conversation(
+                token, user_id, suggested_title or "新對話"
+            )
+            logger.info(f"創建新對話: {conversation_id}")
         
         messages = self.build_prompt(question, sources)
         
@@ -79,8 +97,7 @@ class ChatService(IChatService):
             token, conversation_id, user_id, "assistant", answer
         )
         
-        if len(history) == 0:
-            suggested_title = await self._generate_conversation_title(question, answer)
+        if len(history) == 0 and not is_new_conversation:
             await self.conversation_repository.update_conversation_title(
                 token, conversation_id, suggested_title
             )
@@ -91,7 +108,8 @@ class ChatService(IChatService):
             "sources": sources,
             "query": question,
             "total_sources": len(sources),
-            "model": self.llm_provider.__class__.__name__
+            "model": self.llm_provider.__class__.__name__,
+            "conversation_id": conversation_id
         }
     
     def build_prompt(
@@ -214,7 +232,7 @@ class ChatService(IChatService):
         
         return messages
     
-    async def _generate_conversation_title(self, question: str) -> str:
+    async def _generate_conversation_title(self, question: str, answer: str = None) -> str:
         title_prompt = [
             ChatMessage(
                 role="system",
@@ -253,6 +271,11 @@ class ChatService(IChatService):
     ) -> AsyncGenerator[Dict[str, Any], None]:
         logger.info(f"處理聊天請求 (串流): {question}")
         
+        is_new_conversation = False
+        if not conversation_id:
+            is_new_conversation = True
+            logger.info("沒有提供 conversation_id，將在獲得標題後創建新對話")
+        
         rag_request = RAGSearchRequest(
             collection=collection,
             query_text=question,
@@ -280,12 +303,23 @@ class ChatService(IChatService):
                     for result in results
                 ]
         
-        history = await self.conversation_repository.get_conversation_messages(
-            token, conversation_id, limit=10
-        )
+        history = []
+        if conversation_id:
+            history = await self.conversation_repository.get_conversation_messages(
+                token, conversation_id, limit=10
+            )
+        
         suggested_title = None
         if len(history) == 0:
             suggested_title = await self._generate_conversation_title(question)
+            logger.info(f"生成對話標題: {suggested_title}")
+        
+        if is_new_conversation:
+            conversation_id = await self.conversation_repository.create_conversation(
+                token, user_id, suggested_title or "新對話"
+            )
+            logger.info(f"創建新對話: {conversation_id}")
+        
         logger.info(f"取得歷史對話，共 {len(history)} 筆")
         
         messages = self.build_prompt(question, sources)
@@ -309,8 +343,7 @@ class ChatService(IChatService):
             token, conversation_id, user_id, "assistant", full_answer
         )
         
-        if len(history) == 0:
-            # suggested_title = await self._generate_conversation_title(question, full_answer)
+        if len(history) == 0 and not is_new_conversation:
             await self.conversation_repository.update_conversation_title(
                 token, conversation_id, suggested_title
             )
@@ -321,6 +354,7 @@ class ChatService(IChatService):
             "sources": sources,
             "query": question,
             "total_sources": len(sources),
-            "model": self.llm_provider.__class__.__name__
+            "model": self.llm_provider.__class__.__name__,
+            "conversation_id": conversation_id
         }
 

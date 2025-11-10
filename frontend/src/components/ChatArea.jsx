@@ -260,7 +260,7 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
                     </div>
                   ) : (
                     <div className="avatar ai-avatar">
-                      🤖
+                      <i className="fas fa-balance-scale"></i>
                     </div>
                   )}
                 </div>

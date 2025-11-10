@@ -14,6 +14,7 @@ const Sidebar = ({
   onNewConversation,
   onRenameConversation,
   onDeleteConversation,
+  onShareConversation,
   onLogout,
   loading
 }) => {
@@ -26,6 +27,9 @@ const Sidebar = ({
   const [newName, setNewName] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [copySuccess, setCopySuccess] = useState(false);
   const userMenuRef = useRef(null);
   const menuRefs = useRef({});
   
@@ -146,17 +150,24 @@ const Sidebar = ({
             <div className="conversation-dropdown-menu">
               <button
                 className="dropdown-menu-item"
+                onClick={() => handleShareConversation(conversation.conversation_id)}
+              >
+                <i className="fas fa-share-alt"></i>
+                <span>{t('sidebar.share')}</span>
+              </button>
+              <button
+                className="dropdown-menu-item"
                 onClick={() => handleRenameConversation(conversation)}
               >
                 <i className="fas fa-edit"></i>
-                <span>重新命名</span>
+                <span>{t('sidebar.rename')}</span>
               </button>
               <button
                 className="dropdown-menu-item delete"
                 onClick={() => handleDeleteConversation(conversation.id)}
               >
                 <i className="fas fa-trash"></i>
-                <span>刪除</span>
+                <span>{t('sidebar.delete')}</span>
               </button>
             </div>
           )}
@@ -272,6 +283,48 @@ const Sidebar = ({
   const cancelDeleteConversation = () => {
     setShowDeleteModal(false);
     setConversationToDelete(null);
+  };
+
+  // Handle share conversation
+  const handleShareConversation = async (conversationId) => {
+    console.log('Sidebar: 處理分享對話', conversationId);
+    setActiveMenuId(null);
+    
+    if (!conversationId) {
+      console.error('無效的對話 ID');
+      alert('無法分享此對話：對話 ID 無效');
+      return;
+    }
+    
+    if (onShareConversation) {
+      const shareId = await onShareConversation(conversationId);
+      console.log('Sidebar: 收到 shareId', shareId);
+      
+      if (shareId) {
+        const url = `${window.location.origin}/share/${shareId}`;
+        console.log('Sidebar: 生成分享連結', url);
+        setShareUrl(url);
+        setShowShareModal(true);
+        setCopySuccess(false);
+      } else {
+        console.error('未能獲取分享 ID');
+        alert('分享失敗，請稍後再試');
+      }
+    }
+  };
+
+  // Copy share URL to clipboard
+  const copyShareUrl = async () => {
+    await navigator.clipboard.writeText(shareUrl);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  // Close share modal
+  const closeShareModal = () => {
+    setShowShareModal(false);
+    setShareUrl('');
+    setCopySuccess(false);
   };
 
   return (
@@ -416,18 +469,50 @@ const Sidebar = ({
         <div className="modal-overlay" onClick={cancelDeleteConversation}>
           <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>刪除對話</h3>
+              <h3>{t('sidebar.deleteModal.title')}</h3>
             </div>
             <div className="modal-content">
-              <p>確定要刪除這個對話嗎？此操作無法復原。</p>
+              <p>{t('sidebar.deleteModal.message')}</p>
             </div>
             <div className="modal-actions">
               <button className="cancel-btn" onClick={cancelDeleteConversation}>
-                取消
+                {t('sidebar.deleteModal.cancel')}
               </button>
               <button className="delete-btn" onClick={confirmDeleteConversation}>
-                刪除
+                {t('sidebar.deleteModal.confirm')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="modal-overlay" onClick={closeShareModal}>
+          <div className="share-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{t('sidebar.shareModal.title')}</h3>
+              <button className="modal-close" onClick={closeShareModal}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-content">
+              <p className="share-description">{t('sidebar.shareModal.description')}</p>
+              <div className="share-url-container">
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className="share-url-input"
+                />
+                <button 
+                  className={`copy-btn ${copySuccess ? 'success' : ''}`}
+                  onClick={copyShareUrl}
+                >
+                  <i className={`fas fa-${copySuccess ? 'check' : 'copy'}`}></i>
+                  <span>{copySuccess ? t('sidebar.shareModal.copied') : t('sidebar.shareModal.copy')}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

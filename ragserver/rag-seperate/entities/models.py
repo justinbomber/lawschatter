@@ -12,7 +12,7 @@ class SearchMode(str, Enum):
 class SearchRequest(BaseModel):
     # collection: str = Field(..., description="要搜尋的集合名稱")
     query_text: str = Field(..., description="搜尋查詢文字")
-    conversation_id: str = Field(..., description="對話 ID")
+    conversation_id: Optional[str] = Field(None, description="對話 ID，為 null 時不使用歷史對話")
     # mode: str = Field("hybrid", description="搜尋模式：dense/sparse/hybrid")
     # limit: int = Field(10, description="返回結果數量上限 (1-100)", ge=1, le=100)
     # score_threshold: Optional[float] = Field(None, description="最低分數閾值 (0-1)", ge=0, le=1)

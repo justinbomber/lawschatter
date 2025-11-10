@@ -85,6 +85,20 @@ class SupabaseConversationRepository(IConversationRepository):
         
         logger.info(f"儲存訊息到對話 {conversation_id}，類型: {sender_type}")
 
+    async def create_conversation(self, token: str, user_id: str, title: str = "新對話") -> str:
+        client = self._create_client_with_token(token)
+        
+        response = client.table("conversations") \
+            .insert({
+                "user_id": user_id,
+                "title": title
+            }) \
+            .execute()
+        
+        conversation_id = response.data[0]["conversation_id"]
+        logger.info(f"創建新對話 {conversation_id}，標題: {title}")
+        return conversation_id
+
     async def update_conversation_title(self, token: str, conversation_id: str, title: str) -> None:
         client = self._create_client_with_token(token)
         

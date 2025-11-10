@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
 
 // API 基礎 URL
 const BASE_URL = 'http://localhost:8090/api';
@@ -15,8 +16,11 @@ const apiClient = axios.create({
 // 請求攔截器
 apiClient.interceptors.request.use(
   (config) => {
-    // 如果有 token，自動添加到 headers
-    const token = localStorage.getItem('access_token');
+    if (!validateTokenBeforeRequest()) {
+      return Promise.reject(new Error('Token 已過期'));
+    }
+    
+    const token = getValidToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -39,13 +43,13 @@ apiClient.interceptors.response.use(
   (error) => {
     console.error('API 錯誤:', error.response?.status, error.config?.url);
     
-    // 處理 401 未授權錯誤
     if (error.response?.status === 401) {
-      // 清除過期的 token
+      localStorage.removeItem('supabase_access_token');
+      localStorage.removeItem('supabase_refresh_token');
+      localStorage.removeItem('supabase_user_data');
       localStorage.removeItem('access_token');
       localStorage.removeItem('user_data');
       
-      // 如果當前不在登入頁面，重定向到登入頁面
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
