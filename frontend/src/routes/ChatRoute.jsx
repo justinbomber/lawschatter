@@ -221,6 +221,19 @@ function ChatRoute() {
               setSelectedConversation(newConversation);
               navigate(`/c/${newConversation.conversation_id}`, { replace: true });
             }
+          } else if (!isNewConversation && selectedConversation?.conversation_id) {
+            // 既有對話：更新最近存取時間，並刷新清單排序（將此對話移到最上方）
+            await supabaseConversationAPI.updateRecentConversation(selectedConversation.conversation_id).catch(() => {});
+            const updatedConversation = await supabaseConversationAPI
+              .getConversationById(selectedConversation.conversation_id)
+              .catch(() => null);
+            if (updatedConversation) {
+              setConversations(prev => {
+                const filtered = prev.filter(c => c.conversation_id !== updatedConversation.conversation_id);
+                return [updatedConversation, ...filtered];
+              });
+              setSelectedConversation(updatedConversation);
+            }
           }
         },
         onError: (error) => {
