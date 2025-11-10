@@ -81,35 +81,51 @@ export const chatAPI = {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
-        
-        if (done) {
-          break;
+
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+
+        // SSE 事件以空行分段（\n\n）；僅處理完整段落
+        const events = buffer.split('\n\n');
+        if (!done) {
+          buffer = events.pop() || '';
+        } else {
+          buffer = '';
         }
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        for (const event of events) {
+          // 組合多行 data: 負載
+          const dataPayload = event
+            .split('\n')
+            .filter(line => line.startsWith('data: '))
+            .map(line => line.slice(6))
+            .join('');
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              
-              if (data.type === 'rag_status') {
-                onStatus(data.status);
-              } else if (data.type === 'llm_start') {
-                onStatus(data.status || '開始生成回答');
-              } else if (data.type === 'llm_token') {
-                onToken(data.content);
-              } else if (data.type === 'complete') {
-                onComplete(data);
-              }
-            } catch (e) {
-              console.warn('無法解析 SSE 資料:', line, e);
-            }
+          if (!dataPayload) {
+            continue;
           }
+
+          try {
+            const data = JSON.parse(dataPayload);
+            if (data.type === 'rag_status') {
+              onStatus(data.status);
+            } else if (data.type === 'llm_start') {
+              onStatus(data.status || '開始生成回答');
+            } else if (data.type === 'llm_token') {
+              onToken(data.content);
+            } else if (data.type === 'complete') {
+              onComplete(data);
+            }
+          } catch (e) {
+            console.warn('無法解析 SSE 資料:', `data: ${dataPayload}`, e);
+          }
+        }
+
+        if (done) {
+          break;
         }
       }
     } catch (error) {
