@@ -74,19 +74,19 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         if logic not in ["AND", "OR"]:
             logic = "AND"
         
-        top_k = 50
+        top_k = 15
         
         condition_jid_sets: List[Set[str]] = []
         jid_score_map: Dict[str, float] = {}
         
         for structured_filter in structured_filter_lst:
-            qdrant_filter = self.filter_service.to_qdrant_filter(structured_filter)
+            qdrant_filter, filter_limit = self.filter_service.to_qdrant_filter(structured_filter)
             structured_filter_highlight = structured_filter.copy()
             structured_filter_highlight["summary_type"] = ["case_highlights"]
-            qdrant_filter_highlight = self.filter_service.to_qdrant_filter(structured_filter_highlight)
+            qdrant_filter_highlight, _ = self.filter_service.to_qdrant_filter(structured_filter_highlight)
             structured_filter_case_fact_summary = structured_filter.copy()
             structured_filter_case_fact_summary["summary_type"] = ["case_fact_summary"]
-            qdrant_filter_case_fact_summary = self.filter_service.to_qdrant_filter(structured_filter_case_fact_summary)
+            qdrant_filter_case_fact_summary, _ = self.filter_service.to_qdrant_filter(structured_filter_case_fact_summary)
             qdrant_filter_dict = qdrant_filter.model_dump(exclude_none=True) if qdrant_filter else None
             qdrant_filter_lst = [qdrant_filter]
             summary_filter_lst = [qdrant_filter_highlight, qdrant_filter_case_fact_summary]
@@ -115,7 +115,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 
                 structured_filter_scroll = structured_filter.copy()
                 structured_filter_scroll["summary_type"] = ["case_fact_summary"]
-                qdrant_filter_scroll = self.filter_service.to_qdrant_filter(structured_filter_scroll)
+                qdrant_filter_scroll, _ = self.filter_service.to_qdrant_filter(structured_filter_scroll)
                 qdrant_filter_dict_scroll = qdrant_filter_scroll.model_dump(exclude_none=True) if qdrant_filter_scroll else None
                 
                 logger.info(f"Scroll 過濾條件: {json.dumps(qdrant_filter_dict_scroll, ensure_ascii=False, indent=2)}")
@@ -163,7 +163,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                             query_text=neg_condition,
                             mode=mode,
                             filter=qdrant_filter_sub,
-                            limit=top_k,
+                            limit=top_k*filter_limit,
                             score_threshold=0.95
                         )
                         
@@ -265,7 +265,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 logger.info(f"預設使用 AND 邏輯聚合: {len(aggregated_jids_by_logic)} 個 jid")
         
         filtered_jid_scores = {jid: jid_score_map[jid] for jid in aggregated_jids_by_logic if jid in jid_score_map}
-        sorted_jids = sorted(filtered_jid_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+        sorted_jids = sorted(filtered_jid_scores.items(), key=lambda x: x[1], reverse=True)[:filter_limit]
         aggregated_jids = {jid for jid, _ in sorted_jids}
         
         logger.info(f"按累加分數排序後的前三名:")
@@ -277,7 +277,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         detailed_results = await self.filter_service.retrieve_results_by_jids(
             qdrant_client=self.qdrant_client,
             collection=collection,
-            limit=limit,
+            # limit=limit,
             aggregated_jids=aggregated_jids
         )
         

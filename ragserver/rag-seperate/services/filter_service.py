@@ -63,10 +63,11 @@ class FilterService(IFilterService):
                 
         return output_lst
     
-    def to_qdrant_filter(self, filter_dict: dict) -> models.Filter:
+    def to_qdrant_filter(self, filter_dict: dict) -> tuple[models.Filter, int]:
         must_conditions = []
         must_not_conditions = []
         negated_fields = set(filter_dict.get("negated_fields", []))
+        limit = filter_dict.get("limit", 3)
         
         for key in ["jid_full", "jyear", "jcase", "jno", "jdate", "summary_type"]:
             value = filter_dict.get(key)
@@ -260,8 +261,8 @@ class FilterService(IFilterService):
                             must_conditions.append(condition)
         
         if must_conditions or must_not_conditions:
-            return models.Filter(must=must_conditions, must_not=must_not_conditions)
-        return models.Filter()
+            return models.Filter(must=must_conditions, must_not=must_not_conditions), limit
+        return models.Filter(), limit
     
     def format_jid_full(self, jid_full: str) -> str:
         if not jid_full:
