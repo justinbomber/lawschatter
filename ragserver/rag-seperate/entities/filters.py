@@ -88,6 +88,6 @@ class Filter(BaseModel):
     D_court_reason: Optional[str] = Field(default=None, description="法院推論、採信理由、法條適用與量刑考量。敘述法院的推論過程、採信邏輯、法律適用與量刑考量。可包含法律詞彙、判斷語氣與條文引用。若問句與此項無關直接留空。")
     E_legal_eval: Optional[str] = Field(default=None, description="法院最終法律評價、罪名與競合處理結果。簡述法院最終的法律結論，包括罪名、競合與量刑方向。可使用法律用語（如「共同正犯」「想像競合」「從一重詐欺罪處斷」等）。若問句與此項無關直接留空。")
     negated_fields: Optional[List[str]] = Field(default=None, description="需要否定的欄位列表。在qdrant的filter中會被設為'must_not'的欄位有哪些，其他的metadata中已經有否定的意味在，不要重複填入。如：'defendants.has_defense_attorney'、'case_metadata.first_instance'、'defendants.confession_status' 等。")
-    limit: Optional[int] = Field(default=5, description="返回結果數量上限（必填，根據問題複雜度決定，範圍 1-20）")
+    limit: Optional[int] = Field(default=5, description="返回結果數量上限（必填，根據問題複雜度決定，範圍 1-20，默認3）")
     # case_fact_summary: Optional[str] = Field(default=None, description="無法律評價。提供整體可閱讀的案件輪廓，描述被害人、主要行為流程、整體案件脈絡。若問句與此項無關直接留空。")
 
