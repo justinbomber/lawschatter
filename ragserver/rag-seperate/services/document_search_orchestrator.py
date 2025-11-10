@@ -337,15 +337,25 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         history_messages: List[Message] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         yield {"status": "正在重組你的訊息，並嘗試理解問題"}
-        
-        results = await self._execute_search_logic(
-            collection=collection,
-            query_text=query_text,
-            mode=mode,
-            limit=limit,
-            logic=logic,
-            history_messages=history_messages
-        )
+
+        results = []
+        max_retries = 3
+        for retry in range(max_retries):
+            retry+=1
+            results = await self._execute_search_logic(
+                collection=collection,
+                query_text=query_text,
+                mode=mode,
+                limit=limit,
+                logic=logic,
+                history_messages=history_messages
+            )
+            if len(results) > 0:
+                yield {"status": f"搜尋結果為 {len(results)} 個，正在整理結果"}
+                break
+            else:
+                yield {"status": f"搜尋結果為空，嘗試重新組合你的問題"}
+                continue
         
         yield {"status": "完成向量搜尋"}
         yield {"type": "final_results", "results": results}
