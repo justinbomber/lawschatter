@@ -277,7 +277,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         detailed_results = await self.filter_service.retrieve_results_by_jids(
             qdrant_client=self.qdrant_client,
             collection=collection,
-            # limit=limit,
+            limit=limit,
             aggregated_jids=aggregated_jids
         )
         

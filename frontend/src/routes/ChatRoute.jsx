@@ -237,11 +237,12 @@ function ChatRoute() {
           }
         },
         onError: (error) => {
+          const errorMessage = error?.message || t('chat.connectionError');
           setMessages(prev => prev.map(msg => 
             msg.id === aiMessageId
               ? { 
                   ...msg, 
-                  content: t('chat.connectionError'),
+                  content: `❌ **錯誤**\n\n${errorMessage}`,
                   isStreaming: false,
                   statusMessages: []
                 }

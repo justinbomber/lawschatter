@@ -42,7 +42,8 @@
     "assistantResponse": "Based on your request, I have generated the following prompt. This prompt can help you better interact with AI and get more accurate and useful responses. You can adjust and modify it according to your specific needs.",
     "messageTooLong": "Message is too long, please shorten to 5000 characters or less",
     "createConversationError": "Failed to create conversation, please try again",
-    "connectionError": "Connection error, please check your network and try again",
+    "connectionError": "Connection error or server unable to process request",
+    "serverError": "Server Error",
     "actions": {
       "copy": "Copy",
       "regenerate": "Regenerate",

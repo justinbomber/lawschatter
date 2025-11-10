@@ -76,7 +76,25 @@ export const chatAPI = {
             window.location.href = '/login';
           }
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        
+        let errorMessage = `伺服器錯誤 (${response.status})`;
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (e) {
+          const errorText = await response.text().catch(() => '');
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const reader = response.body.getReader();
@@ -185,7 +203,25 @@ export const chatAPI = {
             window.location.href = '/login';
           }
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        
+        let errorMessage = `伺服器錯誤 (${response.status})`;
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (e) {
+          const errorText = await response.text().catch(() => '');
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

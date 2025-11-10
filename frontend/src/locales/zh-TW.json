@@ -42,7 +42,8 @@
     "assistantResponse": "根據您的要求，我生成了以下提示詞。這個提示詞可以幫助您更好地與AI進行互動，並獲得更準確和有用的回應。您可以根據具體需求進行調整和修改。",
     "messageTooLong": "訊息過長，請縮短至 5000 字元以內",
     "createConversationError": "建立對話失敗，請重試",
-    "connectionError": "連線錯誤，請檢查網路後重試",
+    "connectionError": "連線錯誤或伺服器無法處理請求",
+    "serverError": "伺服器錯誤",
     "actions": {
       "copy": "複製",
       "regenerate": "再生",

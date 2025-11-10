@@ -295,7 +295,7 @@ class FilterService(IFilterService):
                 scroll_filter=models.Filter(
                     must=[models.FieldCondition(key="metadata.jid", match=models.MatchValue(value=jid))]
                 ),
-                limit=50,
+                # limit=50,
                 with_payload=True,
                 with_vectors=False
             )
