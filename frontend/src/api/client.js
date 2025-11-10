@@ -2,7 +2,7 @@ import axios from 'axios';
 import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
 
 // API 基礎 URL
-const BASE_URL = 'http://localhost:8090/api';
+const BASE_URL = 'https://lawschatter.mooo.com';
 
 // 建立 axios 實例
 const apiClient = axios.create({

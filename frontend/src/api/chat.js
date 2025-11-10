@@ -4,7 +4,7 @@
 
 import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
 
-const CHAT_API_URL = 'http://localhost:9500';
+const CHAT_API_URL = 'https://lawschatter.mooo.com';
 
 export const chatAPI = {
   /**

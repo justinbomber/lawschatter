@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { supabaseAuth } from './supabaseClient';
+import supabaseAuthClient, { supabaseAuth } from './supabaseClient';
 
 /**
  * 認證相關的 API 方法
@@ -113,11 +113,15 @@ export const authAPI = {
    */
   refreshToken: async () => {
     try {
-      const response = await apiClient.post('/refresh');
+      const refreshToken = localStorage.getItem('supabase_refresh_token');
+      if (!refreshToken) {
+        return { success: false, error: '找不到 refresh token' };
+      }
+      const response = await supabaseAuth.refreshToken(refreshToken);
       
       return {
         success: true,
-        data: response.data
+        data: response
       };
     } catch (error) {
       const errorMessage = getErrorMessage(error);
@@ -135,11 +139,11 @@ export const authAPI = {
    */
   getUserInfo: async () => {
     try {
-      const response = await apiClient.get('/user/profile');
+      const response = await supabaseAuth.getUser();
       
       return {
         success: true,
-        data: response.data
+        data: response
       };
     } catch (error) {
       const errorMessage = getErrorMessage(error);
@@ -158,7 +162,7 @@ export const authAPI = {
    */
   forgotPassword: async (email) => {
     try {
-      const response = await apiClient.post('/forgot-password', { email });
+      const response = await supabaseAuthClient.post('/recover', { email });
       
       return {
         success: true,
@@ -183,14 +187,12 @@ export const authAPI = {
    */
   resetPassword: async (resetData) => {
     try {
-      const response = await apiClient.post('/reset-password', {
-        token: resetData.token,
-        password: resetData.password
-      });
+      // Supabase 的密碼重置流程通常透過郵件連結完成，這裡僅回傳提示
+      const response = { message: '請使用電子郵件中的連結完成密碼重置' };
       
       return {
         success: true,
-        data: response.data
+        data: response
       };
     } catch (error) {
       const errorMessage = getErrorMessage(error);
