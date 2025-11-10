@@ -288,7 +288,8 @@ class FilterService(IFilterService):
         logger.info(f"retrieve_results_by_jids 接收到 {len(aggregated_jids)} 個 jid")
         logger.info(f"jid 列表: {list(aggregated_jids)}")
         
-        for jid in list(aggregated_jids)[:limit]:
+        for jid in list(aggregated_jids):
+        # for jid in list(aggregated_jids)[:limit]:
             logger.info(f"正在檢索 jid: {jid}")
             scroll_results, _ = await qdrant_client.scroll(
                 collection_name=collection,

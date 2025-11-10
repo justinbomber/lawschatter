@@ -74,7 +74,8 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         if logic not in ["AND", "OR"]:
             logic = "AND"
         
-        top_k = 15
+        top_k = 10
+        filter_limit = 3
         
         condition_jid_sets: List[Set[str]] = []
         jid_score_map: Dict[str, float] = {}
@@ -123,7 +124,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 scroll_results, _ = await self.qdrant_client.scroll(
                     collection_name=collection,
                     scroll_filter=qdrant_filter_scroll,
-                    limit=50,
+                    limit=top_k*filter_limit,
                     with_payload=True,
                     with_vectors=False
                 )
@@ -195,7 +196,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                     query_text=reconstructed_query,
                     mode=mode,
                     filter=qdrant_filter_sub,
-                    limit=top_k,
+                    limit=top_k*filter_limit,
                     score_threshold=0.95
                 )
                 
@@ -277,7 +278,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         detailed_results = await self.filter_service.retrieve_results_by_jids(
             qdrant_client=self.qdrant_client,
             collection=collection,
-            limit=limit,
+            limit=filter_limit,
             aggregated_jids=aggregated_jids
         )
         
