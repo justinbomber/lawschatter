@@ -90,7 +90,18 @@ class FilterService(IFilterService):
                         must_conditions.append(models.Filter(should=list_conditions))
             
             elif key == "jid_full" and value is not None:
-                pass
+                # 使用分詞器處理 jid_full
+                tokens = [
+                    t.strip() for t in self.tokenizer.run_query(value)
+                    if t.strip()
+                ]
+                # 為每個分詞結果創建 MatchPhrase 條件
+                for token in tokens:
+                    condition = models.FieldCondition(
+                        key=f"metadata.{key}",
+                        match=models.MatchPhrase(phrase=token)
+                    )
+                    must_conditions.append(condition)
             elif key == "jyear" and value is not None:
                 if isinstance(value, int):
                     must_conditions.append(
@@ -217,7 +228,7 @@ class FilterService(IFilterService):
                                     if key:
                                         tokens = [
                                             t.strip() for t in self.tokenizer.run_query(cleaned_item)
-                                            if t.strip()
+                                            if t.strip() and not any(char in t for char in ['罪', '法', '條'])
                                         ]
                                         # 為每個分詞結果創建條件
                                         for token in tokens:

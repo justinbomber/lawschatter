@@ -74,7 +74,7 @@ class CaseMetadata(BaseModel):
 
 class Filter(BaseModel):
     jid: Optional[str] = Field(default=None, description="判決書ID（例：TPHM,113,上訴,6418,20250617,1）")
-    jid_full: Optional[str] = Field(default=None, description="完整判決書名稱，（例：臺灣高等法院刑事判決113年度上訴字第6418號）必填")
+    # jid_full: Optional[str] = Field(default=None, description="完整判決書名稱，（例：臺灣高等法院刑事判決113年度上訴字第6418號）必填")
     jyear: Optional[int] = Field(default=None, description="年度（例：113）")
     jcase: Optional[str] = Field(default=None, description="案件類型（例：上訴）")
     jno: Optional[str] = Field(default=None, description="案件編號（例：6418）")
