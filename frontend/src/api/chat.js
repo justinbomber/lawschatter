@@ -4,7 +4,8 @@
 
 import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
 
-const CHAT_API_URL = 'https://lawschatter.mooo.com';
+// 聊天 API URL - 根據環境變數決定
+const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL || 'https://lawschatter.mooo.com';
 
 export const chatAPI = {
   /**

@@ -18,6 +18,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "local": "vite --config vite.config.local.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "build:preview": "vite build && vite preview"

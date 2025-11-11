@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
 
-// API 基礎 URL
-const BASE_URL = 'https://lawschatter.mooo.com';
+// API 基礎 URL - 根據環境變數決定
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lawschatter.mooo.com';
 
 // 建立 axios 實例
 const apiClient = axios.create({
