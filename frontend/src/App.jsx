@@ -80,8 +80,11 @@ function App() {
   };
 
   const handleNewConversation = () => {
+    // 清空當前對話和訊息，確保回到初始狀態
     setSelectedConversation(null);
     setMessages([]);
+    // 停止任何正在進行的載入狀態
+    setIsLoading(false);
   };
 
   const handleRenameConversation = async (conversationId, newTitle) => {

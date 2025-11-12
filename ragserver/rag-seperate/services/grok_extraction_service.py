@@ -119,8 +119,41 @@ class GrokExtractionService(ILLMExtractionService):
 - 若用戶只要求特定判決，則**不要填入任何分類類別**
 - 若用戶只要求特定判決，則**不要填入任何分類類別**
 - 若用戶只要求特定判決，則**不要填入任何分類類別**
-- 若用戶只要求特定判決，則**不要填入任何分類類別**
-- 範例：
+
+分類類別中的否定語義處理規則（重要！）：
+- 當準備填入分類類別（defendants_role、A_fact、B_claim、C_court_finding、D_court_reason、E_legal_eval）的內容帶有否定意味時：
+  步驟1：將否定陳述改寫為正向陳述
+  步驟2：將該分類類別的欄位路徑加入 negated_fields
+  步驟3：同時填入正向陳述內容到對應分類類別
+
+- 範例說明：
+  * 問題：「被告沒有提供對話紀錄的案件」
+    → B_claim = "被告有提供對話紀錄"
+    → negated_fields = ["B_claim"]
+    
+  * 問題：「法院不認為被告有犯意的判決」
+    → C_court_finding = "法院認為被告有犯意"
+    → negated_fields = ["C_court_finding"]
+    
+  * 問題：「被告未提出不在場證明的案例」
+    → B_claim = "被告提出不在場證明"
+    → negated_fields = ["B_claim"]
+    
+  * 問題：「沒有採信被告辯解的判決」
+    → D_court_reason = "採信被告辯解"
+    → negated_fields = ["D_court_reason"]
+
+- 完整範例：
+  問題：「請問有沒有提供帳戶的詐欺案件，被告沒有提供任何對話紀錄，法院還是給予無罪的案例」
+  輸出：
+  {
+    "A_fact": "提供帳戶",
+    "B_claim": "被告有提供對話紀錄",
+    "defendants": {"is_conviction": false},
+    "negated_fields": ["B_claim"]
+  }
+
+- 基本使用範例：
   * "給我被告姓名為xxx的判決" → 僅填 defendants.defendant_name = "xxx"，不填分類類別
   * "給我車手角色且有罪的判決" → 填 defendants_role + defendants.is_conviction
   * "給我提供帳戶手法的無罪判決" → 填 A_fact + defendants.is_conviction

@@ -52,13 +52,13 @@ class FilterService(IFilterService):
             tmp_metadata[summary_type] = tmp_summary[summary_type]
             tmp_metadata["summary_type"] = [summary_type]
             if negated_fields_value:
-                tmp_metadata["negated_fields"] = negated_fields_value
+                tmp_metadata["negated_fields"] = negated_fields_value.copy()
             output_lst.append(tmp_metadata)
         
         if not output_lst and _metadata:
             logger.info("沒有 summary_fields，但有基礎過濾條件，將其加入結果列表")
             if negated_fields_value:
-                _metadata["negated_fields"] = negated_fields_value
+                _metadata["negated_fields"] = negated_fields_value.copy()
             output_lst.append(_metadata)
                 
         return output_lst
@@ -66,6 +66,10 @@ class FilterService(IFilterService):
     def to_qdrant_filter(self, filter_dict: dict) -> tuple[models.Filter, int]:
         must_conditions = []
         must_not_conditions = []
+        summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"]
+        for field in filter_dict.get("negated_fields", []):
+            if field in summary_fields:
+                filter_dict["negated_fields"].remove(field)
         negated_fields = set(filter_dict.get("negated_fields", []))
         limit = filter_dict.get("limit", 3)
         

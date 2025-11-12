@@ -1,7 +1,7 @@
 import logging
 import json
 from typing import Dict, Any, List, Set, AsyncGenerator
-from sentence_transformers import SentenceTransformer, util
+# from sentence_transformers import SentenceTransformer, util
 import re
 from domain.interfaces import IDocumentSearchOrchestrator, ISearchService, IFilterService, IQdrantClient, Message
 from services.search_service import SearchConfig
@@ -38,50 +38,50 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         self.search_service = search_service
         self.filter_service = filter_service
         self.settings = settings
-        self.semantic_model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
+        # self.semantic_model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
+        self.summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"]
     
-    def _extract_negative_conditions(self, query_text: str) -> List[str]:
-        """
-        @brief 從查詢文本中提取負面條件並轉換為正面陳述
+    # def _extract_negative_conditions(self, query_text: str) -> List[str]:
+    #     """
+    #     @brief 從查詢文本中提取負面條件並轉換為正面陳述
         
-        @details 偵測查詢中的否定詞（如：沒有、未、無等），並將其轉換為正面陳述用於反向搜尋。
-                 例如：「沒有提供證據」轉換為「有提供證據」，用於找出需要排除的文件。
+    #     @details 偵測查詢中的否定詞（如：沒有、未、無等），並將其轉換為正面陳述用於反向搜尋。
+    #              例如：「沒有提供證據」轉換為「有提供證據」，用於找出需要排除的文件。
         
-        @param query_text 使用者的查詢文本
-        @return 轉換後的正面陳述列表
-        """
-        negative_indicators = [
-            r'沒有',
-            r'未',
-            r'無',
-            r'不曾',
-            r'從未',
-            r'並未',
-            r'未曾',
-            r'不',
-            r'否認',
-            r'拒絕'
-        ]
+    #     @param query_text 使用者的查詢文本
+    #     @return 轉換後的正面陳述列表
+    #     """
+    #     negative_indicators = [
+    #         r'沒有',
+    #         r'未',
+    #         r'無',
+    #         r'不曾',
+    #         r'從未',
+    #         r'並未',
+    #         r'未曾',
+    #         r'不',
+    #         r'否認',
+    #         r'拒絕'
+    #     ]
         
-        negative_conditions = []
+    #     negative_conditions = []
         
-        for neg_word in negative_indicators:
-            pattern = rf'{neg_word}([^，。！？；\s]{{2,20}})'
-            matches = re.finditer(pattern, query_text)
+    #     for neg_word in negative_indicators:
+    #         pattern = rf'{neg_word}([^，。！？；\s]{{2,20}})'
+    #         matches = re.finditer(pattern, query_text)
             
-            for match in matches:
-                captured_content = match.group(1)
-                if len(captured_content) >= 2:
-                    positive_statement = f"有{captured_content}"
-                    negative_conditions.append(positive_statement)
-                    logger.info(f"檢測到負面條件: '{neg_word}{captured_content}' -> 正面陳述: '{positive_statement}'")
+    #         for match in matches:
+    #             captured_content = match.group(1)
+    #             if len(captured_content) >= 2:
+    #                 positive_statement = f"有{captured_content}"
+    #                 negative_conditions.append(positive_statement)
+    #                 logger.info(f"檢測到負面條件: '{neg_word}{captured_content}' -> 正面陳述: '{positive_statement}'")
         
-        return negative_conditions
+    #     return negative_conditions
     
     def _determine_query_and_field_type(
         self,
         structured_filter: Dict[str, Any],
-        summary_fields: List[str],
         query_text: str
     ) -> tuple[str, str]:
         """
@@ -91,20 +91,19 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                  如果欄位值長度小於 10，則使用原始查詢；否則使用提取的欄位值。
         
         @param structured_filter 結構化的過濾條件字典
-        @param summary_fields 摘要欄位列表
         @param query_text 原始查詢文本
         @return (重構的查詢字串, 欄位類型) 的元組
         """
         reconstructed_query = ""
         field_type = None
-        for field in summary_fields:
+        for field in self.summary_fields:
             if field in structured_filter and structured_filter[field]:
                 extracted_value = structured_filter[field]
-                if len(extracted_value) < 10:
-                    reconstructed_query = query_text
-                    logger.info(f"欄位 '{field}' 值過短 ('{extracted_value}')，使用原始查詢進行語義搜尋")
-                else:
-                    reconstructed_query = extracted_value
+                # if len(extracted_value) < 10:
+                #     reconstructed_query = query_text
+                #     logger.info(f"欄位 '{field}' 值過短 ('{extracted_value}')，使用原始查詢進行語義搜尋")
+                # else:
+                reconstructed_query = extracted_value
                 field_type = field
                 break
         return reconstructed_query, field_type
@@ -190,7 +189,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         negative_jids = set()
         neg_jid_score_map: Dict[str, float] = {}
         logger.info(f"偵測到負面條件，共 {len(negative_conditions)} 個")
-        logger.info(f"負面條件轉換為正面語句: {negative_conditions}")
         
         for neg_condition in negative_conditions:
             logger.info(f"搜尋負面條件: '{neg_condition}'")
@@ -218,7 +216,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                     else:
                         neg_jid_score_map[neg_jid] = score
                     negative_jids.add(neg_jid)
-                    logger.info(f"-----> 負面條件匹配到 jid: {neg_jid}, summary_type: {neg_summary_type}, content: {neg_content}, score: {score}")
+                    logger.info(f"-----> 負面條件匹配到 jid: {neg_jid}, summary_type: {neg_summary_type}, score: {score}")
         
         logger.info("=" * 50)
         for neg_jid, neg_score in neg_jid_score_map.items():
@@ -289,7 +287,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         query_text: str,
         mode: str,
         logic: str,
-        summary_fields: List[str],
         top_k: int,
         filter_limit: int,
         jid_score_map: Dict[str, float]
@@ -309,12 +306,13 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         @param query_text 原始查詢文本
         @param mode 搜尋模式
         @param logic 邏輯運算符（AND/OR）
-        @param summary_fields 摘要欄位列表
         @param top_k 每次搜尋的結果數量
         @param filter_limit 過濾限制數量
         @param jid_score_map JID 分數映射字典（會被修改）
         @return 符合條件的 JID 集合
         """
+        negated_fields_original = structured_filter.get("negated_fields", []).copy()
+        
         qdrant_filter, filter_limit = self.filter_service.to_qdrant_filter(structured_filter)
         structured_filter_highlight = structured_filter.copy()
         structured_filter_highlight["summary_type"] = ["case_highlights"]
@@ -324,7 +322,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         qdrant_filter_case_fact_summary, _ = self.filter_service.to_qdrant_filter(structured_filter_case_fact_summary)
         qdrant_filter_dict = qdrant_filter.model_dump(exclude_none=True) if qdrant_filter else None
         qdrant_filter_lst = [qdrant_filter]
-        summary_filter_lst = [qdrant_filter_highlight, qdrant_filter_case_fact_summary]
+        summary_filter_lst = [qdrant_filter, qdrant_filter_highlight, qdrant_filter_case_fact_summary]
         
         logger.info("=" * 50)
         logger.info(f"Qdrant 過濾條件:\n{json.dumps(qdrant_filter_dict, ensure_ascii=False, indent=2)}")
@@ -333,7 +331,7 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         logger.info("=" * 50)
         
         reconstructed_query, field_type = self._determine_query_and_field_type(
-            structured_filter, summary_fields, query_text
+            structured_filter, query_text
         )
         
         if field_type is None:
@@ -342,8 +340,17 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             )
             return condition_jids
         
-        negative_conditions = self._extract_negative_conditions(reconstructed_query)
+        # negative_conditions = self._extract_negative_conditions(reconstructed_query)
+        negative_conditions = []
+        for field in negated_fields_original:
+            if field in self.summary_fields and field in structured_filter:
+                field_value = structured_filter.get(field, "")
+                if field_value:
+                    negative_conditions.append(field_value)
         negative_jids = set()
+        logger.info(f"------>> structured_filter: {structured_filter}")
+        logger.info(f"------>> negated_fields_original: {negated_fields_original}")
+        logger.info(f"------>> 負面條件: {negative_conditions}")
         
         if negative_conditions:
             negative_jids = await self._search_negative_conditions(
@@ -520,8 +527,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         logger.info(f"過濾條件:\n{json.dumps(structured_filter_lst, ensure_ascii=False, indent=2)}")
         logger.info("=" * 50)
         
-        summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"]
-        
         logic = logic.upper()
         if logic not in ["AND", "OR"]:
             logic = "AND"
@@ -539,7 +544,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 query_text=query_text,
                 mode=mode,
                 logic=logic,
-                summary_fields=summary_fields,
                 top_k=top_k,
                 filter_limit=filter_limit,
                 jid_score_map=jid_score_map

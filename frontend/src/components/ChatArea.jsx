@@ -26,10 +26,11 @@ const ChatArea = ({ messages, sidebarCollapsed, onSendMessage, isLoading }) => {
   useEffect(() => {
     if (messages.length > 0 && isInitialState) {
       setIsInitialState(false);
-    } else if (messages.length === 0 && !isInitialState) {
+    } else if (messages.length === 0) {
+      // 當訊息為空時（包括有錯誤訊息後按新增對話），立即回到初始狀態
       setIsInitialState(true);
     }
-  }, [messages, isInitialState]);
+  }, [messages.length]);
   const messagesEndRef = useRef(null);
   const chatMessagesRef = useRef(null);
   const inputRef = useRef(null);
