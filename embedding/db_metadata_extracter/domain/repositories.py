@@ -25,7 +25,8 @@ class JudgmentRepository(ABC):
     def get_unprocessed_jids_by_date_and_titles(
         self,
         jdate: str,
-        target_titles: List[str]
+        target_titles: List[str],
+        include_ruling: bool = False
     ) -> List[str]:
         pass
 

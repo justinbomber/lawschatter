@@ -76,7 +76,8 @@ class SupabaseJudgmentRepository(JudgmentRepository):
     def get_unprocessed_jids_by_date_and_titles(
         self,
         jdate: str,
-        target_titles: List[str]
+        target_titles: List[str],
+        include_ruling: bool = False
     ) -> List[str]:
         logger.info(f"透過 RPC 獲取日期 {jdate} 未處理的判決 ID")
         jdate_int = int(jdate) if isinstance(jdate, str) else jdate
@@ -84,7 +85,8 @@ class SupabaseJudgmentRepository(JudgmentRepository):
             self.client
             .rpc("get_unprocessed_metadata_jids", {
                 "p_jdate": jdate_int,
-                "p_target_titles": target_titles
+                "p_target_titles": target_titles,
+                "p_include_ruling": include_ruling
             })
             .execute()
         )

@@ -82,7 +82,8 @@ class ExtractMetadataUseCase:
     def _get_unprocessed_jids(self, jdate: str) -> List[str]:
         unprocessed = self.judgment_repo.get_unprocessed_jids_by_date_and_titles(
             jdate,
-            self.target_titles
+            self.target_titles,
+            self.include_adjudicate
         )
         return unprocessed
     
