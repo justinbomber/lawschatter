@@ -41,44 +41,6 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         # self.semantic_model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
         self.summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"]
     
-    # def _extract_negative_conditions(self, query_text: str) -> List[str]:
-    #     """
-    #     @brief 從查詢文本中提取負面條件並轉換為正面陳述
-        
-    #     @details 偵測查詢中的否定詞（如：沒有、未、無等），並將其轉換為正面陳述用於反向搜尋。
-    #              例如：「沒有提供證據」轉換為「有提供證據」，用於找出需要排除的文件。
-        
-    #     @param query_text 使用者的查詢文本
-    #     @return 轉換後的正面陳述列表
-    #     """
-    #     negative_indicators = [
-    #         r'沒有',
-    #         r'未',
-    #         r'無',
-    #         r'不曾',
-    #         r'從未',
-    #         r'並未',
-    #         r'未曾',
-    #         r'不',
-    #         r'否認',
-    #         r'拒絕'
-    #     ]
-        
-    #     negative_conditions = []
-        
-    #     for neg_word in negative_indicators:
-    #         pattern = rf'{neg_word}([^，。！？；\s]{{2,20}})'
-    #         matches = re.finditer(pattern, query_text)
-            
-    #         for match in matches:
-    #             captured_content = match.group(1)
-    #             if len(captured_content) >= 2:
-    #                 positive_statement = f"有{captured_content}"
-    #                 negative_conditions.append(positive_statement)
-    #                 logger.info(f"檢測到負面條件: '{neg_word}{captured_content}' -> 正面陳述: '{positive_statement}'")
-        
-    #     return negative_conditions
-    
     def _determine_query_and_field_type(
         self,
         structured_filter: Dict[str, Any],

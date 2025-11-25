@@ -18,6 +18,7 @@ class VectorStoreConfig:
     collection_name: str
     embedding_api_key: str
     embedding_model: str = "gemini-embedding-001"
+    use_v2: bool = False
 
 
 @dataclass
@@ -45,6 +46,7 @@ class AppConfig:
                 collection_name=os.getenv("COLLECTION_NAME", "new_judgment_0915"),
                 embedding_api_key=os.getenv("GENAI_EMBEDDING_API_KEY"),
                 embedding_model=os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"),
+                use_v2=os.getenv("USE_V2_SCHEMA", "false").lower() == "true",
             ),
             tokenizer=TokenizerConfig(
                 stopwords_path=os.getenv("STOPWORDS_PATH", "zh-t.txt"),

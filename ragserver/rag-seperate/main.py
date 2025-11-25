@@ -9,11 +9,13 @@ from infrastructure.embeddings.dense_embedding import DenseEmbeddingProvider
 from infrastructure.embeddings.sparse_embedding import SparseEmbeddingProvider
 from infrastructure.supabase_repository import SupabaseConversationRepository
 from services.search_service import SearchService
+from services.search_service_v2 import SearchServiceV2
 from services.filter_service import FilterService
 from services.rerank_service import RerankService
 from services.openai_extraction_service import OpenAIExtractionService
 from services.grok_extraction_service import GrokExtractionService
 from services.document_search_orchestrator import DocumentSearchOrchestrator
+from services.document_search_orchestrator_v2 import DocumentSearchOrchestratorV2
 from controllers.search_controller import SearchController
 from controllers.api_router import create_router
 
@@ -38,11 +40,20 @@ async def lifespan(app: FastAPI):
     dense_provider = DenseEmbeddingProvider(settings)
     sparse_provider = SparseEmbeddingProvider(settings)
     
-    search_service = SearchService(
-        dense_provider=dense_provider,
-        sparse_provider=sparse_provider,
-        settings=settings
-    )
+    if settings.qdrant.use_v2:
+        logger.info("使用 V2 搜尋路徑")
+        search_service = SearchServiceV2(
+            dense_provider=dense_provider,
+            sparse_provider=sparse_provider,
+            settings=settings
+        )
+    else:
+        logger.info("使用 V1 搜尋路徑")
+        search_service = SearchService(
+            dense_provider=dense_provider,
+            sparse_provider=sparse_provider,
+            settings=settings
+        )
     
     if settings.llm_provider == "openai":
         llm_extraction_service = OpenAIExtractionService(settings)
@@ -52,12 +63,20 @@ async def lifespan(app: FastAPI):
     filter_service = FilterService(settings, llm_extraction_service)
     rerank_service = RerankService(settings)
     
-    document_search_orchestrator = DocumentSearchOrchestrator(
-        qdrant_client=qdrant_client,
-        search_service=search_service,
-        filter_service=filter_service,
-        settings=settings
-    )
+    if settings.qdrant.use_v2:
+        document_search_orchestrator = DocumentSearchOrchestratorV2(
+            qdrant_client=qdrant_client,
+            search_service=search_service,
+            filter_service=filter_service,
+            settings=settings
+        )
+    else:
+        document_search_orchestrator = DocumentSearchOrchestrator(
+            qdrant_client=qdrant_client,
+            search_service=search_service,
+            filter_service=filter_service,
+            settings=settings
+        )
     
     conversation_repository = SupabaseConversationRepository(settings)
     
@@ -74,6 +93,7 @@ async def lifespan(app: FastAPI):
     logger.info("Qdrant 搜尋 API 服務已啟動")
     logger.info(f"Qdrant URL: {settings.qdrant.url}")
     logger.info(f"Collection: {settings.qdrant.collection_name}")
+    logger.info(f"使用 V2: {settings.qdrant.use_v2}")
     logger.info(f"LLM Provider: {settings.llm_provider}")
     logger.info(f"Supabase Schema: {settings.supabase.schema_name}")
     

@@ -7,6 +7,7 @@ from ..domain import (
     MetadataRepository,
     VectorStore,
     EmbeddingDocument,
+    JudgmentSearchDocument,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,10 +20,18 @@ class EmbedDocumentsUseCase:
         summary_repo: SummaryRepository,
         metadata_repo: MetadataRepository,
         vector_store: VectorStore,
+        use_v2: bool = False,
     ):
         self.summary_repo = summary_repo
         self.metadata_repo = metadata_repo
         self.vector_store = vector_store
+        self.use_v2 = use_v2
+        
+        if self.use_v2:
+            logger.info("使用 V2 Schema（一判決一 point、named vectors）")
+            self.vector_store.create_v2_collection()
+        else:
+            logger.info("使用 V1 Schema（一判決多 points）")
     
     def execute(self) -> None:
         logger.info("開始執行文件嵌入流程")
@@ -57,6 +66,12 @@ class EmbedDocumentsUseCase:
             logger.warning(f"判決 {jid} 沒有 metadata 記錄")
             return False
         
+        if self.use_v2:
+            return self._process_jid_v2(jid, summaries, metadata)
+        else:
+            return self._process_jid_v1(jid, summaries, metadata)
+    
+    def _process_jid_v1(self, jid: str, summaries: List, metadata) -> bool:
         documents = self._build_documents(summaries, metadata)
         
         if not documents:
@@ -72,6 +87,18 @@ class EmbedDocumentsUseCase:
         self.summary_repo.mark_as_embedded(jid)
         
         logger.info(f"完成處理判決 {jid}，共 {len(documents)} 個文件")
+        return True
+    
+    def _process_jid_v2(self, jid: str, summaries: List, metadata) -> bool:
+        judgment_doc = JudgmentSearchDocument.from_summaries_and_metadata(
+            summaries, metadata
+        )
+        
+        self.vector_store.upsert_judgment(judgment_doc)
+        
+        self.summary_repo.mark_as_embedded(jid)
+        
+        logger.info(f"完成處理判決 {jid}（V2 單一 point）")
         return True
     
     def _build_documents(

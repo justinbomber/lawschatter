@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from .entities import EmbeddingDocument
+from .entities import EmbeddingDocument, JudgmentSearchDocument
 
 
 class VectorStore(ABC):
@@ -11,5 +11,13 @@ class VectorStore(ABC):
     
     @abstractmethod
     def add_documents(self, documents: List[EmbeddingDocument]) -> None:
+        pass
+    
+    @abstractmethod
+    def upsert_judgment(self, document: JudgmentSearchDocument) -> None:
+        pass
+    
+    @abstractmethod
+    def create_v2_collection(self) -> None:
         pass
 

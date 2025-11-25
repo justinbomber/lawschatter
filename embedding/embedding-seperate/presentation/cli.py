@@ -47,6 +47,7 @@ class CLI:
             summary_repo=summary_repo,
             metadata_repo=metadata_repo,
             vector_store=vector_store,
+            use_v2=self.config.vector_store.use_v2,
         )
         
         use_case.execute()

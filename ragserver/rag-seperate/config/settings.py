@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 class QdrantConfig:
     url: str
     collection_name: str
+    use_v2: bool = False
 
 
 @dataclass
@@ -61,7 +62,8 @@ class Settings:
         
         self.qdrant = QdrantConfig(
             url=os.getenv("QDRANT_CLIENT", "http://localhost:6333"),
-            collection_name=os.getenv("COLLECTION_NAME", "default_collection")
+            collection_name=os.getenv("COLLECTION_NAME", "default_collection"),
+            use_v2=os.getenv("USE_V2_SEARCH", "false").lower() == "true"
         )
         
         self.openai = OpenAIConfig(

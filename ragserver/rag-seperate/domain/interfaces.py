@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from qdrant_client import models
 from dataclasses import dataclass
 from datetime import datetime
@@ -23,6 +23,22 @@ class Message:
             "content": self.content,
             "created_at": self.created_at.isoformat() if isinstance(self.created_at, datetime) else self.created_at
         }
+
+
+@dataclass
+class PrefetchSpec:
+    query: Union[List[float], models.SparseVector]
+    using: str
+    limit: int
+    filter: Optional[models.Filter] = None
+
+
+@dataclass
+class QuerySpec:
+    query: Union[List[float], models.SparseVector, models.FusionQuery]
+    using: Optional[str] = None
+    limit: int = 100
+    filter: Optional[models.Filter] = None
 
 
 class IEmbeddingProvider(ABC):
@@ -50,6 +66,18 @@ class IQdrantClient(ABC):
     
     @abstractmethod
     async def scroll(self, **kwargs):
+        pass
+    
+    @abstractmethod
+    async def query_with_prefetch(
+        self,
+        collection_name: str,
+        prefetch_queries: List['PrefetchSpec'],
+        main_query: Optional['QuerySpec'],
+        limit: int,
+        filter: Optional[models.Filter] = None,
+        fusion: str = "rrf"
+    ) -> models.QueryResponse:
         pass
 
 

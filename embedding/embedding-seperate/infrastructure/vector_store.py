@@ -4,8 +4,8 @@ from typing import List
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore, RetrievalMode
-from qdrant_client import QdrantClient
-from ..domain import VectorStore, EmbeddingDocument
+from qdrant_client import QdrantClient, models
+from ..domain import VectorStore, EmbeddingDocument, JudgmentSearchDocument
 from .sparse_embedding import ZHTSparseEmbed
 
 logger = logging.getLogger(__name__)
@@ -74,4 +74,81 @@ class QdrantHybridVectorStore(VectorStore):
         
         self.store.add_documents(documents=langchain_docs, ids=ids)
         logger.info(f"成功加入 {len(documents)} 個文件")
+    
+    def upsert_judgment(self, document: JudgmentSearchDocument) -> None:
+        logger.info(f"準備 upsert 判決 {document.judgment_id} 到 V2 collection")
+        
+        dense_vector = self.dense_embeddings.embed_query(document.summary_content)
+        sparse_vector = self.sparse_embeddings.embed_query(document.summary_content)
+        
+        point = models.PointStruct(
+            id=document.judgment_id,
+            vector={
+                "summary_dense": dense_vector,
+                "summary_sparse": models.SparseVector(
+                    indices=sparse_vector.indices,
+                    values=sparse_vector.values
+                )
+            },
+            payload=document.to_payload()
+        )
+        
+        v2_collection = f"{self.collection_name}_v2"
+        self.client.upsert(
+            collection_name=v2_collection,
+            points=[point]
+        )
+        
+        logger.info(f"成功 upsert 判決 {document.judgment_id}")
+    
+    def create_v2_collection(self) -> None:
+        v2_collection = f"{self.collection_name}_v2"
+        
+        logger.info(f"建立 V2 collection: {v2_collection}")
+        
+        collections = self.client.get_collections().collections
+        if any(col.name == v2_collection for col in collections):
+            logger.info(f"Collection {v2_collection} 已存在")
+            return
+        
+        self.client.create_collection(
+            collection_name=v2_collection,
+            vectors_config={
+                "summary_dense": models.VectorParams(
+                    size=768,
+                    distance=models.Distance.COSINE,
+                )
+            },
+            sparse_vectors_config={
+                "summary_sparse": models.SparseVectorParams()
+            }
+        )
+        
+        logger.info("建立 Payload 索引")
+        
+        self.client.create_payload_index(
+            collection_name=v2_collection,
+            field_name="jid",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+        
+        self.client.create_payload_index(
+            collection_name=v2_collection,
+            field_name="has_guilt",
+            field_schema=models.PayloadSchemaType.BOOL,
+        )
+        
+        self.client.create_payload_index(
+            collection_name=v2_collection,
+            field_name="used_messaging_app",
+            field_schema=models.PayloadSchemaType.BOOL,
+        )
+        
+        self.client.create_payload_index(
+            collection_name=v2_collection,
+            field_name="has_recidivism",
+            field_schema=models.PayloadSchemaType.BOOL,
+        )
+        
+        logger.info(f"成功建立 V2 collection: {v2_collection}")
 
