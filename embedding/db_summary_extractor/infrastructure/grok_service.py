@@ -58,7 +58,7 @@ class GrokSummaryExtractor(SummaryExtractor):
                 
                 resp = self.client.chat.completions.create(
                     model=self.model,
-                    reasoning_effort=self.reasoning_effort,
+                    # reasoning_effort=self.reasoning_effort,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},

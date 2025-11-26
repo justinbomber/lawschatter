@@ -118,27 +118,27 @@ class CLI:
         
         decomposer = DefaultSummaryDecomposer(hash_generator)
         
-        # use_case = ExtractSummaryUseCase(
-        #     judgment_repo=judgment_repo,
-        #     metadata_repo=metadata_repo,
-        #     summary_repo=summary_repo,
-        #     extractor=extractor,
-        #     schema_provider=schema_provider,
-        #     decomposer=decomposer,
-        #     hash_generator=hash_generator,
-        #     sleep_interval=self.config.process.sleep_interval,
-        # )
-
-        # use_case.execute()
-
-        use_case_json=ExportJudgmentSummaryToJsonUseCase(
+        use_case = ExtractSummaryUseCase(
             judgment_repo=judgment_repo,
+            metadata_repo=metadata_repo,
+            summary_repo=summary_repo,
             extractor=extractor,
             schema_provider=schema_provider,
-            output_dir=self.config.output_dir
+            decomposer=decomposer,
+            hash_generator=hash_generator,
+            sleep_interval=self.config.process.sleep_interval,
         )
 
-        use_case_json.execute(["TPHM,113,上訴,6418,20250617,1"])
+        use_case.execute()
+
+        # use_case_json=ExportJudgmentSummaryToJsonUseCase(
+        #     judgment_repo=judgment_repo,
+        #     extractor=extractor,
+        #     schema_provider=schema_provider,
+        #     output_dir=self.config.output_dir
+        # )
+
+        # use_case_json.execute(["TPHM,113,上訴,6418,20250617,1"])
         # use_case_json.execute(["MLDM,113,訴,549,20250526,1","TPHM,113,上訴,6418,20250617,1"])
         
         return 0
