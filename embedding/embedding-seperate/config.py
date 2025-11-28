@@ -18,6 +18,8 @@ class VectorStoreConfig:
     collection_name: str
     embedding_api_key: str
     embedding_model: str = "gemini-embedding-001"
+    judgment_collection_name: str = None
+    embedding_mode: str = "chunk"
 
 
 @dataclass
@@ -45,6 +47,8 @@ class AppConfig:
                 collection_name=os.getenv("COLLECTION_NAME", "new_judgment_0915"),
                 embedding_api_key=os.getenv("GENAI_EMBEDDING_API_KEY"),
                 embedding_model=os.getenv("EMBEDDING_MODEL", "gemini-embedding-001"),
+                judgment_collection_name=os.getenv("JUDGMENT_COLLECTION_NAME", "judgment_multivector"),
+                embedding_mode = os.getenv("EMBEDDING_MODE", "chunk")
             ),
             tokenizer=TokenizerConfig(
                 stopwords_path=os.getenv("STOPWORDS_PATH", "zh-t.txt"),

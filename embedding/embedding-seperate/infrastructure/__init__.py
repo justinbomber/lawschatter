@@ -1,4 +1,4 @@
-from .database import SupabaseSummaryRepository, SupabaseMetadataRepository
+from .database import SupabaseSummaryRepository, SupabaseMetadataRepository, SupabaseSummaryMultivectorRepository
 from .vector_store import QdrantHybridVectorStore
 from .tokenizer import JiebaLawTokenizer
 from .sparse_embedding import ZHTSparseEmbed
@@ -9,5 +9,6 @@ __all__ = [
     "QdrantHybridVectorStore",
     "JiebaLawTokenizer",
     "ZHTSparseEmbed",
+    "SupabaseSummaryMultivectorRepository"
 ]
 

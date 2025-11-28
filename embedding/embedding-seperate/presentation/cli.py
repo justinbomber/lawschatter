@@ -1,12 +1,14 @@
 import logging
+import os
 from supabase import create_client
 from ..config import AppConfig
 from ..infrastructure import (
     SupabaseSummaryRepository,
     SupabaseMetadataRepository,
     QdrantHybridVectorStore,
+    SupabaseSummaryMultivectorRepository
 )
-from ..application import EmbedDocumentsUseCase
+from ..application import EmbedDocumentsUseCase, EmbedJudgmentPointsUseCase
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +17,10 @@ class CLI:
     
     def __init__(self, config: AppConfig):
         self.config = config
+        self.mode = config.vector_store.embedding_mode
     
     def run(self) -> tuple[int, int]:
-        logger.info("初始化服務")
+        logger.info(f"初始化服務，模式: {self.mode}")
         
         supabase_client = create_client(
             self.config.database.supabase_url,
@@ -25,6 +28,11 @@ class CLI:
         )
         
         summary_repo = SupabaseSummaryRepository(
+            supabase_client,
+            self.config.database.schema_name
+        )
+
+        summary_multivector_repo = SupabaseSummaryMultivectorRepository(
             supabase_client,
             self.config.database.schema_name
         )
@@ -43,11 +51,24 @@ class CLI:
             embedding_model=self.config.vector_store.embedding_model,
         )
         
-        use_case = EmbedDocumentsUseCase(
-            summary_repo=summary_repo,
-            metadata_repo=metadata_repo,
-            vector_store=vector_store,
-        )
+        if self.mode == "judgment-point":
+            logger.info("使用判決級別嵌入模式")
+            vector_store.recreate_judgment_collection(
+                self.config.vector_store.judgment_collection_name
+            )
+            use_case = EmbedJudgmentPointsUseCase(
+                summary_repo=summary_multivector_repo,
+                metadata_repo=metadata_repo,
+                vector_store=vector_store,
+                target_collection=self.config.vector_store.judgment_collection_name,
+            )
+        else:
+            logger.info("使用區塊級別嵌入模式")
+            use_case = EmbedDocumentsUseCase(
+                summary_repo=summary_repo,
+                metadata_repo=metadata_repo,
+                vector_store=vector_store,
+            )
         
         use_case.execute()
         
