@@ -242,7 +242,7 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                         }
                     },
                     timeout=self.timeout,
-                    reasoning_effort="high"
+                    reasoning_effort="medium"
                 )
                 
                 ai_metadata = json.loads(resp.choices[0].message.content)
