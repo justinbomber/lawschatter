@@ -115,8 +115,9 @@ class CLI:
         )
         
         total_processed = use_case.execute()
-        total_processed = use_case_json.execute(["TPHM,113,上訴,6418,20250617,1"])
+        # total_processed = use_case_json.execute(["TPHM,113,上訴,6418,20250617,1"])
         # total_processed = use_case_json.execute(["MLDM,113,訴,549,20250526,1","TPHM,113,上訴,6418,20250617,1"])
+        # total_processed = use_case._process_judgment("TPHM,113,上訴,6418,20250617,1", "20250617")
         
         logger.info(f"執行完成，總共處理 {total_processed} 筆判決")
         return total_processed

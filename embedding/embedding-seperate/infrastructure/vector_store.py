@@ -11,6 +11,7 @@ from qdrant_client.models import (
     Distance,
     SparseVectorParams,
     SparseIndexParams,
+    SparseVector,
 )
 from ..domain import VectorStore, EmbeddingDocument
 from .sparse_embedding import ZHTSparseEmbed
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class QdrantHybridVectorStore(VectorStore):
+    
+    UNKNOWN_CONTENT_VALUE = "未知"
     
     JUDGMENT_VECTOR_NAMES = [
         "role",
@@ -71,6 +74,25 @@ class QdrantHybridVectorStore(VectorStore):
             vector_name="dense",
             sparse_vector_name="bm25",
         )
+        
+        self._vector_dimension = None
+    
+    def _is_unknown_content(self, content: str) -> bool:
+        return content.strip() == self.UNKNOWN_CONTENT_VALUE
+    
+    def _get_vector_dimension(self) -> int:
+        if self._vector_dimension is None:
+            example_embedding = self.dense_embeddings.embed_query("dimension_probe")
+            self._vector_dimension = len(example_embedding)
+            logger.info(f"向量維度: {self._vector_dimension}")
+        return self._vector_dimension
+    
+    def _get_empty_dense_vector(self) -> List[float]:
+        dim = self._get_vector_dimension()
+        return [0.0] * dim
+    
+    def _get_empty_sparse_vector(self) -> SparseVector:
+        return SparseVector(indices=[], values=[])
     
     def recreate_judgment_collection(self, collection_name: Optional[str] = None) -> None:
         target_collection = collection_name if collection_name else f"{self.collection_name}_judgment"
@@ -114,32 +136,64 @@ class QdrantHybridVectorStore(VectorStore):
         target_collection = collection_name if collection_name else self.collection_name
         logger.info(f"準備加入 {len(documents)} 個文件到 Qdrant collection: {target_collection}")
         
-        langchain_docs = []
-        ids = []
+        normal_docs = []
+        normal_ids = []
+        unknown_docs = []
         
         for doc in documents:
-            langchain_doc = Document(
-                page_content=doc.content,
-                metadata=doc.metadata
-            )
-            langchain_docs.append(langchain_doc)
-            ids.append(doc.document_id)
+            if self._is_unknown_content(doc.content):
+                unknown_docs.append(doc)
+                logger.info(f"文件 {doc.document_id} 內容為未知，將使用空向量")
+            else:
+                langchain_doc = Document(
+                    page_content=doc.content,
+                    metadata=doc.metadata
+                )
+                normal_docs.append(langchain_doc)
+                normal_ids.append(doc.document_id)
         
-        if collection_name:
-            temp_store = QdrantVectorStore(
-                client=self.client,
-                collection_name=target_collection,
-                embedding=self.dense_embeddings,
-                sparse_embedding=self.sparse_embeddings,
-                retrieval_mode=RetrievalMode.HYBRID,
-                vector_name="dense",
-                sparse_vector_name="bm25",
-            )
-            temp_store.add_documents(documents=langchain_docs, ids=ids)
-        else:
-            self.store.add_documents(documents=langchain_docs, ids=ids)
+        if normal_docs:
+            if collection_name:
+                temp_store = QdrantVectorStore(
+                    client=self.client,
+                    collection_name=target_collection,
+                    embedding=self.dense_embeddings,
+                    sparse_embedding=self.sparse_embeddings,
+                    retrieval_mode=RetrievalMode.HYBRID,
+                    vector_name="dense",
+                    sparse_vector_name="bm25",
+                )
+                temp_store.add_documents(documents=normal_docs, ids=normal_ids)
+            else:
+                self.store.add_documents(documents=normal_docs, ids=normal_ids)
+            logger.info(f"成功加入 {len(normal_docs)} 個正常文件到 {target_collection}")
         
-        logger.info(f"成功加入 {len(documents)} 個文件到 {target_collection}")
+        if unknown_docs:
+            self._add_unknown_documents(unknown_docs, target_collection)
+            logger.info(f"成功加入 {len(unknown_docs)} 個未知內容文件（空向量）到 {target_collection}")
+        
+        logger.info(f"總計加入 {len(documents)} 個文件到 {target_collection}")
+    
+    def _add_unknown_documents(self, documents: List[EmbeddingDocument], collection_name: str) -> None:
+        empty_dense = self._get_empty_dense_vector()
+        empty_sparse = self._get_empty_sparse_vector()
+        
+        points = []
+        for doc in documents:
+            point = PointStruct(
+                id=doc.document_id,
+                vector={
+                    "dense": empty_dense,
+                    "bm25": empty_sparse,
+                },
+                payload=doc.metadata,
+            )
+            points.append(point)
+        
+        self.client.upsert(
+            collection_name=collection_name,
+            points=points
+        )
     
     def add_judgment_points(self, documents_by_jid: Dict[str, List[EmbeddingDocument]], collection_name: Optional[str] = None) -> None:
         target_collection = collection_name if collection_name else f"{self.collection_name}_judgment"
@@ -255,7 +309,11 @@ class QdrantHybridVectorStore(VectorStore):
                         logger.warning(f"跳過未定義的向量名稱: {vector_name}")
                         continue
                     
-                    dense_vector = self.dense_embeddings.embed_query(combined_content)
+                    if self._is_unknown_content(combined_content):
+                        logger.info(f"判決 {jid} 的 {summary_type} 內容為未知，使用空向量")
+                        dense_vector = self._get_empty_dense_vector()
+                    else:
+                        dense_vector = self.dense_embeddings.embed_query(combined_content)
                     named_vectors[vector_name] = dense_vector
                 
                 if not named_vectors:

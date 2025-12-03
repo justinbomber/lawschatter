@@ -10,5 +10,6 @@ __all__ = [
     "RerankService",
     "OpenAIExtractionService",
     "GrokExtractionService",
+    "MultivectorFilterService",
 ]
 

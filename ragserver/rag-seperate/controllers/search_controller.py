@@ -155,18 +155,18 @@ class SearchController:
         limit = 5
         logic = "AND"
         
-        if search_mode == "chunk-strong-weak":
-            if not self.chunk_strong_weak_orchestrator:
-                raise HTTPException(status_code=501, detail="Chunk strong-weak 搜尋模式未啟用")
-            
-            collection = self.settings.qdrant.collection_name
-            orchestrator = self.chunk_strong_weak_orchestrator
-            logger.info(f"使用 chunk-strong-weak 搜尋模式，collection: {collection}")
+        # if search_mode == "chunk-strong-weak":
+        if not self.chunk_strong_weak_orchestrator:
+            raise HTTPException(status_code=501, detail="Chunk strong-weak 搜尋模式未啟用")
         
-        else:
-            collection = self.settings.qdrant.collection_name
-            orchestrator = self.document_search_orchestrator
-            logger.info(f"使用標準 chunk 搜尋模式，collection: {collection}")
+        collection = self.settings.qdrant.collection_name
+        orchestrator = self.chunk_strong_weak_orchestrator
+        logger.info(f"使用 chunk-strong-weak 搜尋模式，collection: {collection}")
+        
+        # else:
+        #     collection = self.settings.qdrant.collection_name
+        #     orchestrator = self.document_search_orchestrator
+        #     logger.info(f"使用標準 chunk 搜尋模式，collection: {collection}")
         
         async for chunk in orchestrator.orchestrate_search_stream(
             collection=collection,

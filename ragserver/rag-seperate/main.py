@@ -15,8 +15,10 @@ from services.openai_extraction_service import OpenAIExtractionService
 from services.grok_extraction_service import GrokExtractionService
 from services.document_search_orchestrator import DocumentSearchOrchestrator
 from services.chunk_strong_weak_orchestrator import ChunkStrongWeakSearchOrchestrator
+from services.multivector_filter_service import MultivectorFilterService
 from controllers.search_controller import SearchController
 from controllers.api_router import create_router
+
 
 
 logging.basicConfig(
@@ -51,6 +53,7 @@ async def lifespan(app: FastAPI):
         llm_extraction_service = GrokExtractionService(settings)
     
     filter_service = FilterService(settings, llm_extraction_service)
+    multivector_filter_service = MultivectorFilterService(settings, llm_extraction_service)
     rerank_service = RerankService(settings)
     
     document_search_orchestrator = DocumentSearchOrchestrator(
@@ -63,7 +66,7 @@ async def lifespan(app: FastAPI):
     chunk_strong_weak_orchestrator = ChunkStrongWeakSearchOrchestrator(
         qdrant_client=qdrant_client,
         search_service=search_service,
-        filter_service=filter_service,
+        filter_service=multivector_filter_service,
         settings=settings
     )
     
