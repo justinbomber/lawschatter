@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
 from qdrant_client import models
 from dataclasses import dataclass
 from datetime import datetime
@@ -104,8 +104,24 @@ class IDocumentSearchOrchestrator(ABC):
         mode: str,
         limit: int,
         logic: str = "AND",
-        history_messages: List['Message'] = None
+        history_messages: List['Message'] = None,
+        hard_fields: Optional[List[str]] = None,
+        soft_fields: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
+        pass
+    
+    @abstractmethod
+    def orchestrate_search_stream(
+        self,
+        collection: str,
+        query_text: str,
+        mode: str,
+        limit: int,
+        logic: str = "AND",
+        history_messages: List['Message'] = None,
+        hard_fields: Optional[List[str]] = None,
+        soft_fields: Optional[List[str]] = None
+    ) -> AsyncGenerator[Dict[str, Any], None]:
         pass
 
 

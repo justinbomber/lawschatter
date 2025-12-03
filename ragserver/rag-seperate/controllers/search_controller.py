@@ -14,12 +14,14 @@ class SearchController:
         qdrant_client: IQdrantClient,
         document_search_orchestrator: IDocumentSearchOrchestrator,
         conversation_repository: IConversationRepository,
-        settings: Settings
+        settings: Settings,
+        rrf_orchestrator: IDocumentSearchOrchestrator = None
     ):
         self.qdrant_client = qdrant_client
         self.document_search_orchestrator = document_search_orchestrator
         self.conversation_repository = conversation_repository
         self.settings = settings
+        self.rrf_orchestrator = rrf_orchestrator
 
     async def search_documents(self, request: SearchRequest, token: str, user_id: str) -> SearchResponse:
         history = []
@@ -129,4 +131,42 @@ class SearchController:
             qdrant_connection="connected",
             collections_count=len(collections.collections)
         )
+    
+    async def search_documents_rrf(self, request: SearchRequest, token: str, user_id: str) -> AsyncGenerator[Dict[str, Any], None]:
+        history = []
+        
+        if request.conversation_id:
+            has_access = await self.conversation_repository.verify_user_conversation_access(
+                token, user_id, request.conversation_id
+            )
+            
+            if not has_access:
+                raise HTTPException(status_code=403, detail="無權訪問此對話")
+            
+            history = await self.conversation_repository.get_conversation_messages(
+                token, request.conversation_id, limit=10
+            )
+            logger.info(f"取得對話 {request.conversation_id} 的 {len(history)} 筆歷史訊息")
+        else:
+            logger.info("沒有提供 conversation_id，使用空歷史記錄進行搜尋")
+        
+        mode = "hybrid"
+        limit = 5
+        logic = "AND"
+        
+        if not self.rrf_orchestrator:
+            raise HTTPException(status_code=501, detail="RRF 搜尋模式未啟用")
+        
+        collection = self.settings.qdrant.collection_name
+        logger.info(f"使用 RRF 搜尋模式，collection: {collection}")
+        
+        async for chunk in self.rrf_orchestrator.orchestrate_search_stream(
+            collection=collection,
+            query_text=request.query_text,
+            mode=mode,
+            limit=limit,
+            logic=logic,
+            history_messages=history
+        ):
+            yield chunk
 

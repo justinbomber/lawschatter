@@ -39,7 +39,22 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         self.filter_service = filter_service
         self.settings = settings
         # self.semantic_model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
-        self.summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"]
+        self.summary_fields = [
+            "defendants_role", "A_fact", "B_claim", "C_court_finding", 
+            "D_court_reason", "E_legal_eval",
+            "statement_inconsistency_with_previous", "justification_reason", "excuse_reason"
+        ]
+    
+    def _map_field_to_vector_name(self, field_type: str) -> str:
+        """
+        @brief 將 filter 欄位名稱映射為向量名稱
+        
+        @param field_type 過濾欄位名稱
+        @return 對應的向量名稱
+        """
+        if field_type == "defendants_role":
+            return "role"
+        return field_type
     
     def _determine_query_and_field_type(
         self,
@@ -195,7 +210,8 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         qdrant_filter_lst: List[Any],
         top_k: int,
         filter_limit: int,
-        jid_score_map: Dict[str, float]
+        jid_score_map: Dict[str, float],
+        field_type: str = None
     ) -> Set[str]:
         """
         @brief 執行正面條件的向量搜尋
@@ -210,9 +226,18 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         @param top_k 每次搜尋的結果數量
         @param filter_limit 過濾限制數量
         @param jid_score_map JID 分數映射字典（會被修改）
+        @param field_type 欄位類型，用於動態設定向量名稱
         @return 符合正面條件的 JID 集合
         """
         condition_jids = set()
+        
+        if field_type:
+            vector_field = self._map_field_to_vector_name(field_type)
+            dense_name = vector_field
+            sparse_name = f"{vector_field}_bm25"
+        else:
+            dense_name = "dense"
+            sparse_name = "bm25"
         
         for qdrant_filter_sub in qdrant_filter_lst:
             config = SearchConfig(
@@ -221,7 +246,9 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
                 mode=mode,
                 filter=qdrant_filter_sub,
                 limit=top_k*filter_limit,
-                score_threshold=0.95
+                score_threshold=0.95,
+                dense_name=dense_name,
+                sparse_name=sparse_name
             )
             
             response = await self.search_service.search(self.qdrant_client, config)
@@ -322,7 +349,8 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
             logger.info("未檢測到負面條件")
         
         condition_jids = await self._execute_positive_search(
-            collection, reconstructed_query, mode, qdrant_filter_lst, top_k, filter_limit, jid_score_map
+            collection, reconstructed_query, mode, qdrant_filter_lst, top_k, filter_limit, jid_score_map,
+            field_type=field_type
         )
         
         if negative_jids:
@@ -545,7 +573,9 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         mode: str,
         limit: int,
         logic: str = "AND",
-        history_messages: List[Message] = None
+        history_messages: List[Message] = None,
+        hard_fields: List[str] = None,
+        soft_fields: List[str] = None
     ) -> List[Dict[str, Any]]:
         """
         @brief 協調搜尋的公開介面（非串流模式）

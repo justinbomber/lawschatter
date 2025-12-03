@@ -7,6 +7,9 @@ CREATE TYPE lawschatter.summary_type AS ENUM (
     'C_court_finding',
     'D_court_reason',
     'E_legal_eval',
+    'statement_inconsistency_with_previous',
+    'justification_reason',
+    'excuse_reason',
     'case_highlights'
 );
 
@@ -30,7 +33,7 @@ create index IF not exists idx_judgment_summary_jdate on lawschatter.judgment_su
 create index IF not exists idx_judgment_summary_defendent_name on lawschatter.judgment_summary using btree (defendent_name) TABLESPACE pg_default;
 
 -- 添加註釋
-COMMENT ON TYPE lawschatter.summary_type IS '判決書摘要分類類型：case_fact_summary(案件事實概要)、role(被告角色)、A_fact(行為事實)、B_claim(被告主張)、C_court_finding(法院認定)、D_court_reason(法院推論)、E_legal_eval(法律評價)、case_highlights(案件特殊點)';
+COMMENT ON TYPE lawschatter.summary_type IS '判決書摘要分類類型：case_fact_summary(案件事實概要)、role(被告角色)、A_fact(行為事實)、B_claim(被告主張)、C_court_finding(法院認定)、D_court_reason(法院推論)、E_legal_eval(法律評價)、statement_inconsistency_with_previous(與前審陳述不一致)、justification_reason(阻卻違法理由)、excuse_reason(阻卻罪責理由)、case_highlights(案件特殊點)';
 COMMENT ON TABLE lawschatter.judgment_summary IS '存儲判決書摘要內容，支援分類與被告層級分析';
 COMMENT ON COLUMN lawschatter.judgment_summary.point_id IS '摘要內容雜湊值';
 COMMENT ON COLUMN lawschatter.judgment_summary.jid IS '判決書唯一識別碼';

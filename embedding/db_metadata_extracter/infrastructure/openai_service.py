@@ -18,7 +18,7 @@ class OpenAIMetadataExtractor(MetadataExtractor):
         timeout: int = 600, 
         max_wait_time: int = 300, 
         max_retries: int = 5,
-        chunk_size: int = 7500,
+        chunk_size: int = 9000,
         overlap_ratio: float = 0.25
     ):
         self.client = client
@@ -86,7 +86,6 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                 "你是一名專業的法律判決資料結構化助手。\n\n"
                 "重要規則：\n"
                 "1. 必須準確輸出繁體中文法律專有名詞，絕對不可使用同音字或形似字替換\n"
-                "2. 常見法律術語務必正確：詐欺（不是誚喻）、洗錢（不是洗錯）、銀行（不是銏行）\n"
                 "3. 請仔細閱讀判決原文，直接複製原文中的法律用語，不要自行改寫\n"
                 "4. 嚴格按照 JSON Schema 輸出結構化結果\n\n"
             )
@@ -96,7 +95,6 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                 "你是一名專業的法律判決資料結構化助手。\n\n"
                 "重要規則：\n"
                 "1. 必須準確輸出繁體中文法律專有名詞，絕對不可使用同音字或形似字替換\n"
-                "2. 常見法律術語務必正確：詐欺（不是誚喻）、洗錢（不是洗錯）、銀行（不是銏行）\n"
                 "3. 請仔細閱讀判決原文片段，直接複製原文中的法律用語\n"
                 "4. 繼續提取當前片段的資訊，合併並更新結構化結果\n"
                 "5. 若當前片段資訊與前一片段衝突，以當前片段（原文）為準\n"

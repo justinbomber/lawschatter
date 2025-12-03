@@ -42,6 +42,9 @@ class DefaultSummaryDecomposer(SummaryDecomposer):
                 "C_court_finding": defendant.C_court_finding,
                 "D_court_reason": defendant.D_court_reason,
                 "E_legal_eval": defendant.E_legal_eval,
+                "statement_inconsistency_with_previous": defendant.statement_inconsistency_with_previous,
+                "justification_reason": defendant.justification_reason,
+                "excuse_reason": defendant.excuse_reason,
             }
             
             for field_name, field_content in defendant_fields.items():
