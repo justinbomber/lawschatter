@@ -18,6 +18,9 @@ class DefendantSummary:
     C_court_finding: str
     D_court_reason: str
     E_legal_eval: str
+    statement_inconsistency_with_previous: str
+    justification_reason: str
+    excuse_reason: str
 
 
 @dataclass

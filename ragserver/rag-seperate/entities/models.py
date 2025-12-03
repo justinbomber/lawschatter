@@ -17,6 +17,7 @@ class SearchRequest(BaseModel):
     # limit: int = Field(10, description="返回結果數量上限 (1-100)", ge=1, le=100)
     # score_threshold: Optional[float] = Field(None, description="最低分數閾值 (0-1)", ge=0, le=1)
     streaming: bool = Field(False, description="是否使用 SSE 串流回復")
+    search_mode: Optional[str] = Field("chunk", description="搜尋模式：chunk/chunk-strong-weak")
 
 
 class SearchResponse(BaseModel):

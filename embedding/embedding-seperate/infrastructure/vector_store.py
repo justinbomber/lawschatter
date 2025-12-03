@@ -27,6 +27,9 @@ class QdrantHybridVectorStore(VectorStore):
         "C_court_finding",
         "D_court_reason",
         "E_legal_eval",
+        "statement_inconsistency_with_previous",
+        "justification_reason",
+        "excuse_reason",
         "case_fact_summary",
         "case_highlights",
     ]

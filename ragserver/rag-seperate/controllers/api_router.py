@@ -74,5 +74,29 @@ def create_router(controller: SearchController) -> APIRouter:
     async def health_check():
         return await controller.health_check()
     
+    @router.post("/search/advanced")
+    async def search_documents_advanced(
+        request: SearchRequest,
+        auth_data: tuple[str, str] = Depends(get_token_and_user_id)
+    ):
+        token, user_id = auth_data
+        search_mode = request.search_mode or "chunk"
+        logger.info(f"使用者 {user_id} 收到進階搜尋請求: mode={search_mode}, query={request.query_text}")
+        
+        async def event_generator() -> AsyncGenerator[str, None]:
+            async for chunk in controller.search_documents_advanced(request, token, user_id):
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+        
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Cache-Control, Content-Type",
+            }
+        )
+    
     return router
 

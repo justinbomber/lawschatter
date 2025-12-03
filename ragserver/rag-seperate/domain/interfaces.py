@@ -104,7 +104,9 @@ class IDocumentSearchOrchestrator(ABC):
         mode: str,
         limit: int,
         logic: str = "AND",
-        history_messages: List['Message'] = None
+        history_messages: List['Message'] = None,
+        hard_fields: Optional[List[str]] = None,
+        soft_fields: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         pass
 

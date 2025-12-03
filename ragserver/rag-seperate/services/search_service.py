@@ -1,12 +1,22 @@
 import logging
-from typing import Dict, Any, List
-from dataclasses import dataclass
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass, field
 from qdrant_client import models
 from domain.interfaces import ISearchService, IEmbeddingProvider, IQdrantClient
 from config.settings import Settings
 
 
 logger = logging.getLogger(__name__)
+
+
+MULTIVECTOR_FIELD_NAMES = [
+    "role",
+    "A_fact",
+    "B_claim",
+    "C_court_finding",
+    "D_court_reason",
+    "E_legal_eval",
+]
 
 
 @dataclass
@@ -22,6 +32,8 @@ class SearchConfig:
     score_threshold: float = None
     with_vectors: bool = False
     use_branch_filters: bool = False
+    field_queries: Optional[Dict[str, str]] = None
+    negated_fields: Optional[List[str]] = None
 
 
 class SearchService(ISearchService):
@@ -111,6 +123,92 @@ class SearchService(ISearchService):
             prefetch=prefetch,
             query=fusion_query,
             query_filter=None if config.use_branch_filters else config.filter,
+            limit=config.limit,
+            offset=config.offset,
+            with_vectors=config.with_vectors,
+            score_threshold=config.score_threshold,
+        )
+    
+    async def search_multivector_rrf(
+        self,
+        client: IQdrantClient,
+        config: SearchConfig
+    ) -> models.QueryResponse:
+        if not config.field_queries:
+            raise ValueError("需要提供 field_queries")
+        
+        negated_fields = config.negated_fields or []
+        prefetch_list = []
+        
+        for field_name, query_text in config.field_queries.items():
+            if field_name not in MULTIVECTOR_FIELD_NAMES:
+                logger.warning(f"欄位 '{field_name}' 不在支援的 multivector 欄位中，跳過")
+                continue
+            
+            if not query_text:
+                continue
+            
+            dense_vector = await self.dense_embeddings.embed_query(query_text)
+            sparse_result = await self.sparse_embeddings.embed_query(query_text)
+            sparse_vector = models.SparseVector(
+                indices=sparse_result.indices,
+                values=sparse_result.values,
+            )
+            
+            dense_name = field_name
+            sparse_name = f"{field_name}_bm25"
+            
+            is_negated = field_name in negated_fields
+            
+            if is_negated:
+                prefetch_list.append(
+                    models.Prefetch(
+                        query=models.RecommendQuery(
+                            positive=[],
+                            negative=[dense_vector]
+                        ),
+                        using=dense_name,
+                        limit=50,
+                    )
+                )
+                prefetch_list.append(
+                    models.Prefetch(
+                        query=models.RecommendQuery(
+                            positive=[],
+                            negative=[sparse_vector]
+                        ),
+                        using=sparse_name,
+                        limit=50,
+                    )
+                )
+                logger.info(f"欄位 '{field_name}' 使用負向 Hybrid 查詢")
+            else:
+                prefetch_list.append(
+                    models.Prefetch(
+                        query=dense_vector,
+                        using=dense_name,
+                        limit=50,
+                    )
+                )
+                prefetch_list.append(
+                    models.Prefetch(
+                        query=sparse_vector,
+                        using=sparse_name,
+                        limit=50,
+                    )
+                )
+                logger.info(f"欄位 '{field_name}' 使用正向 Hybrid 查詢")
+        
+        if not prefetch_list:
+            raise ValueError("沒有有效的 field_queries 可以執行搜尋")
+        
+        fusion_query = models.FusionQuery(fusion=models.Fusion.RRF)
+        
+        return await client.query_points(
+            collection_name=config.collection,
+            prefetch=prefetch_list,
+            query=fusion_query,
+            query_filter=config.filter,
             limit=config.limit,
             offset=config.offset,
             with_vectors=config.with_vectors,

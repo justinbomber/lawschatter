@@ -248,6 +248,9 @@ class OpenAISummaryExtractor(SummaryExtractor):
                     C_court_finding=defendant_data.get("C_court_finding", "未知"),
                     D_court_reason=defendant_data.get("D_court_reason", "未知"),
                     E_legal_eval=defendant_data.get("E_legal_eval", "未知"),
+                    statement_inconsistency_with_previous=defendant_data.get("statement_inconsistency_with_previous", "無"),
+                    justification_reason=defendant_data.get("justification_reason", "無"),
+                    excuse_reason=defendant_data.get("excuse_reason", "無"),
                 )
                 defendants.append(defendant)
             
@@ -321,6 +324,9 @@ class OpenAISummaryExtractor(SummaryExtractor):
                         C_court_finding=defendant_data.get("C_court_finding", "未知"),
                         D_court_reason=defendant_data.get("D_court_reason", "未知"),
                         E_legal_eval=defendant_data.get("E_legal_eval", "未知"),
+                        statement_inconsistency_with_previous=defendant_data.get("statement_inconsistency_with_previous", "無"),
+                        justification_reason=defendant_data.get("justification_reason", "無"),
+                        excuse_reason=defendant_data.get("excuse_reason", "無"),
                     )
                     defendants.append(defendant)
                 

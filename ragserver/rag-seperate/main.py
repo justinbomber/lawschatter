@@ -14,6 +14,7 @@ from services.rerank_service import RerankService
 from services.openai_extraction_service import OpenAIExtractionService
 from services.grok_extraction_service import GrokExtractionService
 from services.document_search_orchestrator import DocumentSearchOrchestrator
+from services.chunk_strong_weak_orchestrator import ChunkStrongWeakSearchOrchestrator
 from controllers.search_controller import SearchController
 from controllers.api_router import create_router
 
@@ -59,13 +60,21 @@ async def lifespan(app: FastAPI):
         settings=settings
     )
     
+    chunk_strong_weak_orchestrator = ChunkStrongWeakSearchOrchestrator(
+        qdrant_client=qdrant_client,
+        search_service=search_service,
+        filter_service=filter_service,
+        settings=settings
+    )
+    
     conversation_repository = SupabaseConversationRepository(settings)
     
     search_controller = SearchController(
         qdrant_client=qdrant_client,
         document_search_orchestrator=document_search_orchestrator,
         conversation_repository=conversation_repository,
-        settings=settings
+        settings=settings,
+        chunk_strong_weak_orchestrator=chunk_strong_weak_orchestrator
     )
     
     router = create_router(search_controller)

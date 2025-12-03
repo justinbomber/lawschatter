@@ -25,9 +25,16 @@
               "type": "string",
               "description": "辯護人名稱（若 has_defense_attorney 為 true 時填寫，否則填空字串）"
             },
+            "prosecution_articles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "本件遭起訴之法條（有幾條填幾條）"
+            },
             "indictment_changed": {
               "type": "boolean",
-              "description": "是否變更起訴法條（若同一條文但項次不同，仍視為變更）"
+              "description": "檢察官是否變更起訴法條（若同一條文但項次不同，仍視為變更）"
             },
             "original_indictment_articles": {
               "type": "array",
@@ -94,6 +101,17 @@
               },
               "description": "所違反的法律條文（若 is_conviction 為 true 時填寫，列出具體法條與條次，關鍵字 XXX 條 XXX 項）"
             },
+            "is_conviction_same_as_prosecution": {
+              "type": "boolean",
+              "description": "本件判決法院認定有罪適用法條的部分，是否與遭起訴的部分完全相同（若 is_conviction 為 true 時填寫）"
+            },
+            "conviction_prosecution_difference_articles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "若判決法條與起訴法條不同，請僅列出差異的法條名稱與條號（若 is_conviction_same_as_prosecution 為 false 時填寫）"
+            },
             "is_fixed_term_imprisonment": {
               "type": "boolean",
               "description": "本件是否為有期徒刑"
@@ -154,6 +172,10 @@
               "type": "boolean",
               "description": "本件是否與被害人或告訴人和解"
             },
+            "is_full_settlement": {
+              "type": "boolean",
+              "description": "是否與全部被害人或告訴人和解（若 has_settlement 為 true 時填寫）"
+            },
             "settlement_amount": {
               "type": "integer",
               "description": "和解之總金額（新臺幣，若 has_settlement 為 true 時填寫，否則填 0）"
@@ -200,14 +222,9 @@
               },
               "description": "本件遭沒收物品（若 has_confiscated_items 為 true 時填寫）"
             },
-            "is_continuous_offense": {
-              "type": "string",
-              "enum": [
-                "是",
-                "否",
-                "未提及"
-              ],
-              "description": "本件被告是否屬於接續犯"
+            "has_surrendered_proceeds": {
+              "type": "boolean",
+              "description": "本件是否繳交犯罪所得"
             },
             "is_first_instance": {
               "type": "boolean",
@@ -275,12 +292,132 @@
             "statement_difference_description": {
               "type": "string",
               "description": "若有，請以一句話描述前後陳述的主要差異（若 has_inconsistent_statements_with_previous 為 true 時填寫）"
+            },
+            "has_justification_issue": {
+              "type": "boolean",
+              "description": "本件是否有阻卻違法的爭點"
+            },
+            "has_justification_applied": {
+              "type": "boolean",
+              "description": "本件是否有阻卻違法的適用（若 has_justification_issue 為 true 時填寫）"
+            },
+            "has_excuse_issue": {
+              "type": "boolean",
+              "description": "本件是否有阻卻罪責的爭點"
+            },
+            "has_excuse_applied": {
+              "type": "boolean",
+              "description": "本件是否有阻卻罪責的適用（若 has_excuse_issue 為 true 時填寫）"
+            },
+            "has_attempt_issue": {
+              "type": "boolean",
+              "description": "本件是否有未遂的爭點"
+            },
+            "attempt_related_articles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "本件涉及未遂行為的法條（若 has_attempt_issue 為 true 時填寫）"
+            },
+            "has_act_count_issue": {
+              "type": "boolean",
+              "description": "本件是否有行為數的爭點"
+            },
+            "act_count_issues": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "article": {
+                    "type": "string",
+                    "description": "行為數爭點所涉及法條"
+                  },
+                  "act_classification": {
+                    "type": "string",
+                    "enum": [
+                      "單一行為",
+                      "接續犯",
+                      "集合犯",
+                      "吸收犯",
+                      "結合犯",
+                      "其他",
+                      "實質競合"
+                    ],
+                    "description": "犯罪行為數性質或是行為分類"
+                  },
+                  "classification_reason": {
+                    "type": "string",
+                    "description": "上述分類理由"
+                  },
+                  "multiple_acts_recognized": {
+                    "type": "boolean",
+                    "description": "判決認定為數個行為"
+                  },
+                  "has_similar_repeated_acts": {
+                    "type": "boolean",
+                    "description": "本件是否有相類似的重複行為"
+                  },
+                  "involves_multiple_victims": {
+                    "type": "boolean",
+                    "description": "是否涉及多名被害人"
+                  }
+                },
+                "required": [
+                  "article",
+                  "act_classification",
+                  "classification_reason",
+                  "multiple_acts_recognized",
+                  "has_similar_repeated_acts",
+                  "involves_multiple_victims"
+                ],
+                "additionalProperties": false
+              },
+              "description": "行為數爭點列表（若 has_act_count_issue 為 true 時填寫，按法條列舉）"
+            },
+            "has_concurrent_offense_issue": {
+              "type": "boolean",
+              "description": "本件有沒有「一行為同時違反數個法條」的爭點"
+            },
+            "concurrent_offense_articles": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "article": {
+                    "type": "string",
+                    "description": "爭點所涉犯的法條"
+                  },
+                  "competition_resolution": {
+                    "type": "string",
+                    "enum": [
+                      "想像競合",
+                      "法條競合",
+                      "吸收",
+                      "其他"
+                    ],
+                    "description": "判決處理法條競合的方法"
+                  },
+                  "final_conviction_article": {
+                    "type": "string",
+                    "description": "最終成立的法條罪名"
+                  }
+                },
+                "required": [
+                  "article",
+                  "competition_resolution",
+                  "final_conviction_article"
+                ],
+                "additionalProperties": false
+              },
+              "description": "法條競合爭點列表（若 has_concurrent_offense_issue 為 true 時填寫）"
             }
           },
           "required": [
             "defendant_name",
             "has_defense_attorney",
             "defense_attorney_name",
+            "prosecution_articles",
             "indictment_changed",
             "original_indictment_articles",
             "changed_indictment_articles",
@@ -294,6 +431,8 @@
             "is_conviction",
             "crime_list",
             "violated_law_articles",
+            "is_conviction_same_as_prosecution",
+            "conviction_prosecution_difference_articles",
             "is_fixed_term_imprisonment",
             "fixed_term_years",
             "fixed_term_months",
@@ -309,6 +448,7 @@
             "has_mitigation_articles",
             "mitigation_articles",
             "has_settlement",
+            "is_full_settlement",
             "settlement_amount",
             "is_settlement_fulfilled",
             "is_settlement_installment",
@@ -319,7 +459,7 @@
             "seized_items",
             "has_confiscated_items",
             "confiscated_items",
-            "is_continuous_offense",
+            "has_surrendered_proceeds",
             "is_first_instance",
             "is_second_instance",
             "is_third_instance",
@@ -332,7 +472,17 @@
             "previous_instance_confession_status",
             "current_instance_confession_status",
             "has_inconsistent_statements_with_previous",
-            "statement_difference_description"
+            "statement_difference_description",
+            "has_justification_issue",
+            "has_justification_applied",
+            "has_excuse_issue",
+            "has_excuse_applied",
+            "has_attempt_issue",
+            "attempt_related_articles",
+            "has_act_count_issue",
+            "act_count_issues",
+            "has_concurrent_offense_issue",
+            "concurrent_offense_articles"
           ],
           "additionalProperties": false
         }
@@ -360,10 +510,6 @@
               "行政法"
             ],
             "description": "案件類型，只能為：刑法，民法，行政法其中一種"
-          },
-          "chunk_overview": {
-            "type": "string",
-            "description": "本chunk的文字概要，總結300字"
           },
           "jtitle_type": {
             "type": "string",
@@ -394,7 +540,6 @@
           "first_instance",
           "second_instance",
           "third_instance",
-          "chunk_overview",
           "case_type",
           "jtitle_type"
         ],

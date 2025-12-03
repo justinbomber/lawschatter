@@ -545,7 +545,9 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         mode: str,
         limit: int,
         logic: str = "AND",
-        history_messages: List[Message] = None
+        history_messages: List[Message] = None,
+        hard_fields: List[str] = None,
+        soft_fields: List[str] = None
     ) -> List[Dict[str, Any]]:
         """
         @brief 協調搜尋的公開介面（非串流模式）
