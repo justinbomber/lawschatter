@@ -16,6 +16,9 @@ MULTIVECTOR_FIELD_NAMES = [
     "C_court_finding",
     "D_court_reason",
     "E_legal_eval",
+    "statement_inconsistency_with_previous",
+    "justification_reason",
+    "excuse_reason",
 ]
 
 

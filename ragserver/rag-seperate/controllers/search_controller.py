@@ -15,13 +15,13 @@ class SearchController:
         document_search_orchestrator: IDocumentSearchOrchestrator,
         conversation_repository: IConversationRepository,
         settings: Settings,
-        chunk_strong_weak_orchestrator: IDocumentSearchOrchestrator = None
+        rrf_orchestrator: IDocumentSearchOrchestrator = None
     ):
         self.qdrant_client = qdrant_client
         self.document_search_orchestrator = document_search_orchestrator
         self.conversation_repository = conversation_repository
         self.settings = settings
-        self.chunk_strong_weak_orchestrator = chunk_strong_weak_orchestrator
+        self.rrf_orchestrator = rrf_orchestrator
 
     async def search_documents(self, request: SearchRequest, token: str, user_id: str) -> SearchResponse:
         history = []
@@ -132,7 +132,7 @@ class SearchController:
             collections_count=len(collections.collections)
         )
     
-    async def search_documents_advanced(self, request: SearchRequest, token: str, user_id: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def search_documents_rrf(self, request: SearchRequest, token: str, user_id: str) -> AsyncGenerator[Dict[str, Any], None]:
         history = []
         
         if request.conversation_id:
@@ -150,25 +150,17 @@ class SearchController:
         else:
             logger.info("沒有提供 conversation_id，使用空歷史記錄進行搜尋")
         
-        search_mode = request.search_mode or "chunk"
         mode = "hybrid"
         limit = 5
         logic = "AND"
         
-        # if search_mode == "chunk-strong-weak":
-        if not self.chunk_strong_weak_orchestrator:
-            raise HTTPException(status_code=501, detail="Chunk strong-weak 搜尋模式未啟用")
+        if not self.rrf_orchestrator:
+            raise HTTPException(status_code=501, detail="RRF 搜尋模式未啟用")
         
         collection = self.settings.qdrant.collection_name
-        orchestrator = self.chunk_strong_weak_orchestrator
-        logger.info(f"使用 chunk-strong-weak 搜尋模式，collection: {collection}")
+        logger.info(f"使用 RRF 搜尋模式，collection: {collection}")
         
-        # else:
-        #     collection = self.settings.qdrant.collection_name
-        #     orchestrator = self.document_search_orchestrator
-        #     logger.info(f"使用標準 chunk 搜尋模式，collection: {collection}")
-        
-        async for chunk in orchestrator.orchestrate_search_stream(
+        async for chunk in self.rrf_orchestrator.orchestrate_search_stream(
             collection=collection,
             query_text=request.query_text,
             mode=mode,

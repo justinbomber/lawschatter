@@ -9,7 +9,7 @@ from config.settings import Settings
 logger = logging.getLogger(__name__)
 
 
-class ChunkStrongWeakSearchOrchestrator(IDocumentSearchOrchestrator):
+class RRFSearchOrchestrator(IDocumentSearchOrchestrator):
     
     def __init__(
         self,

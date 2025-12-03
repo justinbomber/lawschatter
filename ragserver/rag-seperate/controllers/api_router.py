@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Header, HTTPException, Depends
-from entities.models import SearchRequest, SearchResponse, CollectionInfo, HealthStatus
+from entities.models import SearchRequest, SearchResponse, CollectionInfo, HealthStatus, SearchMode
 from controllers.search_controller import SearchController
 import logging
 from fastapi.responses import StreamingResponse
@@ -43,22 +43,42 @@ def create_router(controller: SearchController) -> APIRouter:
     async def collection_info(collection: str):
         return await controller.get_collection_info(collection)
     
-    @router.post("/search", response_model=SearchResponse)
+    @router.post("/search")
     async def search_documents(
         request: SearchRequest,
         auth_data: tuple[str, str] = Depends(get_token_and_user_id)
     ):
         token, user_id = auth_data
+        search_mode = request.search_mode
         streaming_info = f", streaming={request.streaming}" if request.streaming else ""
-        logger.info(f"使用者 {user_id} 收到搜尋請求: conversation_id={request.conversation_id}, query={request.query_text}{streaming_info}")
+        logger.info(f"使用者 {user_id} 收到搜尋請求: mode={search_mode.value}, query={request.query_text}{streaming_info}")
         
-        if request.streaming:
-            async def event_generator() -> AsyncGenerator[str, None]:
-                async for chunk in controller.search_documents_stream(request, token, user_id):
+        if search_mode == SearchMode.CHUNK:
+            if request.streaming:
+                async def event_generator() -> AsyncGenerator[str, None]:
+                    async for chunk in controller.search_documents_stream(request, token, user_id):
+                        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+                
+                return StreamingResponse(
+                    event_generator(),
+                    media_type="text/event-stream",
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Headers": "Cache-Control, Content-Type",
+                    }
+                )
+            else:
+                return await controller.search_documents(request, token, user_id)
+        
+        elif search_mode == SearchMode.RRF:
+            async def rrf_event_generator() -> AsyncGenerator[str, None]:
+                async for chunk in controller.search_documents_rrf(request, token, user_id):
                     yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
             
             return StreamingResponse(
-                event_generator(),
+                rrf_event_generator(),
                 media_type="text/event-stream",
                 headers={
                     "Cache-Control": "no-cache",
@@ -67,36 +87,10 @@ def create_router(controller: SearchController) -> APIRouter:
                     "Access-Control-Allow-Headers": "Cache-Control, Content-Type",
                 }
             )
-        else:
-            return await controller.search_documents(request, token, user_id)
     
     @router.get("/health", response_model=HealthStatus)
     async def health_check():
         return await controller.health_check()
-    
-    @router.post("/search/advanced")
-    async def search_documents_advanced(
-        request: SearchRequest,
-        auth_data: tuple[str, str] = Depends(get_token_and_user_id)
-    ):
-        token, user_id = auth_data
-        search_mode = request.search_mode or "chunk"
-        logger.info(f"使用者 {user_id} 收到進階搜尋請求: mode={search_mode}, query={request.query_text}")
-        
-        async def event_generator() -> AsyncGenerator[str, None]:
-            async for chunk in controller.search_documents_advanced(request, token, user_id):
-                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
-        
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Cache-Control, Content-Type",
-            }
-        )
     
     return router
 
