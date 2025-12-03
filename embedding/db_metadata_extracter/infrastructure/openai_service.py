@@ -135,7 +135,7 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                         }
                     },
                     timeout=self.timeout,
-                    reasoning_effort="high"
+                    reasoning_effort="medium"
                 )
                 
                 ai_metadata = json.loads(resp.choices[0].message.content)
@@ -181,7 +181,7 @@ class OpenAIMetadataExtractor(MetadataExtractor):
         judgment: JudgmentRecord, 
         schema: Dict[str, Any]
     ) -> MetadataExtractionResult:
-        logger.info(f"使用 OpenAI 提取 metadata: {judgment.jid}")
+        logger.info(f"使用 {self.model} 提取 metadata: {judgment.jid}")
         
         text_length = len(judgment.jfull)
         
