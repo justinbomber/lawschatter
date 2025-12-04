@@ -10,6 +10,7 @@ from ..domain import (
     SummaryExtractionResult,
     DefendantSummary,
 )
+from ..config import FieldsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -239,18 +240,11 @@ class OpenAISummaryExtractor(SummaryExtractor):
             logger.info(f"完成所有 chunks 處理: {judgment.jid}")
             
             defendants = []
+            # TODO: 增加欄位
             for defendant_data in previous_result.get("defendants", []):
                 defendant = DefendantSummary(
-                    name=defendant_data.get("name", "未知"),
-                    role=defendant_data.get("role", "未知"),
-                    A_fact=defendant_data.get("A_fact", "未知"),
-                    B_claim=defendant_data.get("B_claim", "未知"),
-                    C_court_finding=defendant_data.get("C_court_finding", "未知"),
-                    D_court_reason=defendant_data.get("D_court_reason", "未知"),
-                    E_legal_eval=defendant_data.get("E_legal_eval", "未知"),
-                    statement_inconsistency_with_previous=defendant_data.get("statement_inconsistency_with_previous", "無"),
-                    justification_reason=defendant_data.get("justification_reason", "無"),
-                    excuse_reason=defendant_data.get("excuse_reason", "無"),
+                    **{field: defendant_data.get(field, FieldsConfig.DEFAULT_VALUE) 
+                       for field in FieldsConfig.get_defendant_summary_fields()}
                 )
                 defendants.append(defendant)
             
@@ -315,18 +309,11 @@ class OpenAISummaryExtractor(SummaryExtractor):
                     logger.info(f"成功提取 summary: {judgment.jid}")
                 
                 defendants = []
+                # TODO: 增加欄位
                 for defendant_data in ai_summary.get("defendants", []):
                     defendant = DefendantSummary(
-                        name=defendant_data.get("name", "未知"),
-                        role=defendant_data.get("role", "未知"),
-                        A_fact=defendant_data.get("A_fact", "未知"),
-                        B_claim=defendant_data.get("B_claim", "未知"),
-                        C_court_finding=defendant_data.get("C_court_finding", "未知"),
-                        D_court_reason=defendant_data.get("D_court_reason", "未知"),
-                        E_legal_eval=defendant_data.get("E_legal_eval", "未知"),
-                        statement_inconsistency_with_previous=defendant_data.get("statement_inconsistency_with_previous", "無"),
-                        justification_reason=defendant_data.get("justification_reason", "無"),
-                        excuse_reason=defendant_data.get("excuse_reason", "無"),
+                        **{field: defendant_data.get(field, FieldsConfig.DEFAULT_VALUE) 
+                           for field in FieldsConfig.get_defendant_summary_fields()}
                     )
                     defendants.append(defendant)
                 

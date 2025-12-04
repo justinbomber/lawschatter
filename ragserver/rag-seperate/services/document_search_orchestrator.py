@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Set, AsyncGenerator
 import re
 from domain.interfaces import IDocumentSearchOrchestrator, ISearchService, IFilterService, IQdrantClient, Message
 from services.search_service import SearchConfig
-from config.settings import Settings
+from config.settings import Settings, FieldsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +39,8 @@ class DocumentSearchOrchestrator(IDocumentSearchOrchestrator):
         self.filter_service = filter_service
         self.settings = settings
         # self.semantic_model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
-        self.summary_fields = [
-            "defendants_role", "A_fact", "B_claim", "C_court_finding", 
-            "D_court_reason", "E_legal_eval",
-            "statement_inconsistency_with_previous", "justification_reason", "excuse_reason"
-        ]
+        # TODO: 增加欄位
+        self.summary_fields = FieldsConfig.get_summary_fields()
     
     def _map_field_to_vector_name(self, field_type: str) -> str:
         """

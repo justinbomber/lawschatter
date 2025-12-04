@@ -23,6 +23,7 @@ class QdrantHybridVectorStore(VectorStore):
     
     UNKNOWN_CONTENT_VALUE = "未知"
     
+    # TODO: 增加欄位
     JUDGMENT_VECTOR_NAMES = [
         "role",
         "A_fact",

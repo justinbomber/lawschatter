@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Set
 from qdrant_client import models
 from infrastructure.tokenizer import JiebaLawTokenizer
 from domain.interfaces import IFilterService, IQdrantClient, ILLMExtractionService, Message
-from config.settings import Settings
+from config.settings import Settings, FieldsConfig
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,8 @@ class FilterService(IFilterService):
                 structured_output["defendants"] = [structured_output["defendants"][0]]
         
         output_lst = []
-        summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval", "case_fact_summary"]
+        # TODO: 增加欄位
+        summary_fields = FieldsConfig.get_summary_fields_with_case_fact()
         _metadata = structured_output.copy()
         tmp_summary = {}
         
@@ -66,7 +67,8 @@ class FilterService(IFilterService):
     def to_qdrant_filter(self, filter_dict: dict) -> tuple[models.Filter, int]:
         must_conditions = []
         must_not_conditions = []
-        summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval"]
+        # TODO: 增加欄位
+        summary_fields = FieldsConfig.get_summary_fields()
         for field in filter_dict.get("negated_fields", []):
             if field in summary_fields:
                 filter_dict["negated_fields"].remove(field)

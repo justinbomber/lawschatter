@@ -49,15 +49,15 @@
                         },
                         "statement_inconsistency_with_previous": {
                             "type": "string",
-                            "description": "本件與原審（前審）答辯或主要陳述內容不一致之情形。若有，請以30字內呈現不一致的地方；若沒有，請填「未知」。"
+                            "description": "本件與原審（前審）答辯或主要陳述內容不一致之情形。若有，請呈現不一致的地方；若沒有，請填「未知」。"
                         },
                         "justification_reason": {
                             "type": "string",
-                            "description": "本件具有阻卻違法的理由。若有，請以30字內呈現阻卻違法的理由；若沒有，請填「未知」。"
+                            "description": "本件具有阻卻違法的理由。若有，請呈現阻卻違法的理由；若沒有，請填「未知」。"
                         },
                         "excuse_reason": {
                             "type": "string",
-                            "description": "本件具有阻卻罪責的理由。若有，請以30字內呈現阻卻罪責的理由；若沒有，請填「未知」。"
+                            "description": "本件具有阻卻罪責的理由。若有，請呈現阻卻罪責的理由；若沒有，請填「未知」。"
                         }
                     },
                     "required": ["name", "role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval", "statement_inconsistency_with_previous", "justification_reason", "excuse_reason"]

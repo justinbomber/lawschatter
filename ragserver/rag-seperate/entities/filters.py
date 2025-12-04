@@ -101,6 +101,7 @@ class CaseMetadata(BaseModel):
     ]] = Field(default=None, description="案件標題類型")
 
 
+# TODO: 增加欄位 (需與 config.settings.FieldsConfig.BASE_FIELDS 保持同步)
 class Filter(BaseModel):
     jid: Optional[str] = Field(default=None, description="判決書ID（例：TPHM,113,上訴,6418,20250617,1）")
     # jid_full: Optional[str] = Field(default=None, description="完整判決書名稱，（例：臺灣高等法院刑事判決113年度上訴字第6418號）必填")

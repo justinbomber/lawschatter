@@ -9,17 +9,10 @@ from config.settings import Settings
 logger = logging.getLogger(__name__)
 
 
-MULTIVECTOR_FIELD_NAMES = [
-    "role",
-    "A_fact",
-    "B_claim",
-    "C_court_finding",
-    "D_court_reason",
-    "E_legal_eval",
-    "statement_inconsistency_with_previous",
-    "justification_reason",
-    "excuse_reason",
-]
+from config.settings import FieldsConfig
+
+# TODO: 增加欄位
+MULTIVECTOR_FIELD_NAMES = FieldsConfig.get_multivector_field_names()
 
 
 @dataclass

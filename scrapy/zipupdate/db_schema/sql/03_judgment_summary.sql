@@ -1,4 +1,5 @@
 -- 建立摘要類型的enum
+# TODO 增加欄位
 CREATE TYPE lawschatter.summary_type AS ENUM (
     'case_fact_summary',
     'role',

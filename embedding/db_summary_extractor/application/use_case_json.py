@@ -10,6 +10,7 @@ from ..domain import (
     SummaryExtractionResult,
     SchemaProvider,
 )
+from ..config import FieldsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -67,15 +68,11 @@ class ExportJudgmentSummaryToJsonUseCase:
         extraction: SummaryExtractionResult
     ) -> dict:
         defendants_list = []
+        # TODO: 增加欄位
         for defendant in extraction.defendants:
             defendants_list.append({
-                "name": defendant.name,
-                "role": defendant.role,
-                "A_fact": defendant.A_fact,
-                "B_claim": defendant.B_claim,
-                "C_court_finding": defendant.C_court_finding,
-                "D_court_reason": defendant.D_court_reason,
-                "E_legal_eval": defendant.E_legal_eval,
+                field: getattr(defendant, field) 
+                for field in FieldsConfig.get_defendant_summary_fields()
             })
         
         return {
