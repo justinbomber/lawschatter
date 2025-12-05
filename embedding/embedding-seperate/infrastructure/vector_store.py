@@ -36,6 +36,7 @@ class QdrantHybridVectorStore(VectorStore):
         "excuse_reason",
         "case_fact_summary",
         "case_highlights",
+        "conduct_count_analysis"
     ]
     
     def __init__(
