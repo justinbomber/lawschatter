@@ -45,6 +45,7 @@ class DefaultSummaryDecomposer(SummaryDecomposer):
                 "statement_inconsistency_with_previous": defendant.statement_inconsistency_with_previous,
                 "justification_reason": defendant.justification_reason,
                 "excuse_reason": defendant.excuse_reason,
+                "conduct_count_analysis": defendant.conduct_count_analysis,
             }
             
             for field_name, field_content in defendant_fields.items():
