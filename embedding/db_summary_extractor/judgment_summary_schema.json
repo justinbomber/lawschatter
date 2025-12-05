@@ -70,8 +70,12 @@
                 "items": {
                     "type": "string"
                 }
+            },
+            "conduct_count_analysis": {
+                "type": "string",
+                "description": "行為爭點敘述：本件在行為個數的爭點中，列舉每個法條得出犯罪行為數量是多少的理由。格式為編號列表，如「1.法條a:理由」「2.法條b:理由」，逐一說明法院如何認定各罪名的行為個數及其判斷依據。若判決未涉及行為個數爭點，填寫「未涉及行為個數爭點」。"
             }
         },
-        "required": ["case_fact_summary", "defendants", "case_highlights"]
+        "required": ["case_fact_summary", "defendants", "case_highlights", "conduct_count_analysis"]
     }
 }

@@ -20,6 +20,7 @@ class FieldsConfig:
         "statement_inconsistency_with_previous",
         "justification_reason",
         "excuse_reason",
+        "conduct_count_analysis"
     ]
     
     DEFAULT_VALUE: str = "未知"

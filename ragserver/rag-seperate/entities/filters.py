@@ -122,6 +122,7 @@ class Filter(BaseModel):
     excuse_reason: Optional[str] = Field(default=None, description="本件具有阻卻罪責的理由。【若有，請以30字內呈現阻卻罪責的理由；若沒有或與問句無關，請留空】。")
     case_fact_summary: Optional[str] = Field(default=None, description="全案500字內事實概要，無法律評價。提供整體可閱讀的案件輪廓，知悉案件中的人事時地物。描述每個行為人的角色、主要行為流程、具體事實、整體金流脈絡。【必須使用完整語句描述，字數需達30字以上，不可只填關鍵詞】。若問句與此項無關直接留空。")
     case_highlights: Optional[str] = Field(default=None, description="案件特殊點，呈現本案中最具代表性、特殊性或分析價值的語意特徵。【必須使用完整語句描述，字數需達20字以上，不可只填關鍵詞】。若問句與此項無關直接留空。")
+    conduct_count_analysis: Optional[str] = Field(default=None, description="行為爭點敘述：本件在行為個數的爭點中，列舉每個法條得出犯罪行為數量是多少的理由。格式為編號列表，如「1.法條a:理由」「2.法條b:理由」，逐一說明法院如何認定各罪名的行為個數及其判斷依據。若判決未涉及行為個數爭點，填寫「未涉及行為個數爭點」。【必須使用完整語句描述，字數需達30字以上，不可只填關鍵詞】。若問句與此項無關直接留空。")
     negated_fields: Optional[List[str]] = Field(default=None, description="需要否定的欄位列表。在qdrant的filter中會被設為'must_not'的欄位有哪些，其他的metadata中已經有否定的意味在，不要重複填入。如：'defendants.has_defense_attorney'、'case_metadata.first_instance'、'defendants.confession_status' 等。")
     limit: Optional[int] = Field(default=5, description="返回結果數量上限（必填，根據問題複雜度決定，範圍 1-20，默認3）")
     hard_condition_fields: Optional[List[str]] = Field(default=None, description="強條件欄位清單：這些欄位代表用戶問句中的核心必要條件，必須精確匹配。通常包含：C_court_finding（法院認定）、E_legal_eval（法律評價）、defendants.is_conviction（有罪判決）、defendants.crime_list（罪名）等明確法律判斷相關欄位。範例：若用戶問「法院認定有罪的詐欺案件」，則 hard_condition_fields 應填 ['C_court_finding', 'E_legal_eval']。若問句沒有明確必要條件則留空。")
