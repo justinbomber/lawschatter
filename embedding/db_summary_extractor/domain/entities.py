@@ -22,7 +22,6 @@ class DefendantSummary:
     statement_inconsistency_with_previous: str
     justification_reason: str
     excuse_reason: str
-    conduct_count_analysis: str
     
     @classmethod
     def get_field_names(cls) -> List[str]:
@@ -34,6 +33,7 @@ class SummaryExtractionResult:
     case_fact_summary: str
     defendants: List[DefendantSummary]
     case_highlights: List[str]
+    conduct_count_analysis: str
 
 
 @dataclass

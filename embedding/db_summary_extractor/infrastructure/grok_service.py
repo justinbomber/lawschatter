@@ -97,6 +97,7 @@ class GrokSummaryExtractor(SummaryExtractor):
                     case_fact_summary=ai_summary.get("case_fact_summary", ""),
                     defendants=defendants,
                     case_highlights=ai_summary.get("case_highlights", []),
+                    conduct_count_analysis=ai_summary.get("conduct_count_analysis", FieldsConfig.DEFAULT_VALUE),
                 )
                 
             except (APITimeoutError, APIConnectionError) as e:

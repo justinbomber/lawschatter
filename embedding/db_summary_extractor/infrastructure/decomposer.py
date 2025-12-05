@@ -45,7 +45,6 @@ class DefaultSummaryDecomposer(SummaryDecomposer):
                 "statement_inconsistency_with_previous": defendant.statement_inconsistency_with_previous,
                 "justification_reason": defendant.justification_reason,
                 "excuse_reason": defendant.excuse_reason,
-                "conduct_count_analysis": defendant.conduct_count_analysis,
             }
             
             for field_name, field_content in defendant_fields.items():
@@ -66,6 +65,19 @@ class DefaultSummaryDecomposer(SummaryDecomposer):
                 content=highlight,
                 index=idx,
                 hash_generator=self.hash_generator.generate,
+            )
+            records.append(record)
+        
+        if extraction.conduct_count_analysis:
+            unique_string = f"{jid}_conduct_count_analysis"
+            point_id = self.hash_generator.generate(unique_string)
+            record = SummaryRecord(
+                point_id=point_id,
+                jid=jid,
+                jdate=jdate,
+                summary_type="conduct_count_analysis",
+                content=extraction.conduct_count_analysis,
+                defendent_name=None,
             )
             records.append(record)
         
