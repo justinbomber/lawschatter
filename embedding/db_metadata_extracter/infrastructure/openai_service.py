@@ -1,9 +1,7 @@
 import json
 import logging
-import time
 from typing import Dict, Any, List
 from openai import OpenAI
-from openai import APITimeoutError, APIConnectionError, APIError
 from ..domain import MetadataExtractor, JudgmentRecord, MetadataExtractionResult
 
 logger = logging.getLogger(__name__)
@@ -16,18 +14,17 @@ class OpenAIMetadataExtractor(MetadataExtractor):
         client: OpenAI, 
         model: str = "gpt-5", 
         timeout: int = 600, 
-        max_wait_time: int = 300, 
-        max_retries: int = 5,
         chunk_size: int = 9000,
         overlap_ratio: float = 0.25
     ):
         self.client = client
         self.model = model
         self.timeout = timeout
-        self.max_wait_time = max_wait_time
-        self.max_retries = max_retries
         self.chunk_size = chunk_size
         self.overlap_ratio = overlap_ratio
+    
+    def set_client(self, client: OpenAI) -> None:
+        self.client = client
     
     def _split_text_into_chunks(self, text: str) -> List[str]:
         text_length = len(text)
@@ -106,73 +103,31 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                 f"當前判決片段（請以此為準）：\n{chunk_text}"
             )
         
-        attempt = 0
+        previous_result_str = json.dumps(previous_result, ensure_ascii=False)
+        logger.info(f"處理 chunk {chunk_index + 1}/{total_chunks}: {jid}, length: {len(chunk_text)+len(previous_result_str)}")
         
-        while attempt < self.max_retries:
-            attempt += 1
-            previous_result_str = json.dumps(previous_result, ensure_ascii=False)
-            
-            try:
-                if attempt == 1:
-                    logger.info(f"處理 chunk {chunk_index + 1}/{total_chunks}: {jid}, length: {len(chunk_text)+len(previous_result_str)}")
-                else:
-                    logger.warning(f"重試處理 chunk {chunk_index + 1}/{total_chunks} (第 {attempt}/{self.max_retries} 次): {jid}")
-                
-                resp = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    response_format={
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": "judgment_metadata",
-                            "strict": True,
-                            "schema": schema["json_schema"]
-                        }
-                    },
-                    timeout=self.timeout,
-                    reasoning_effort="medium"
-                )
-                
-                ai_metadata = json.loads(resp.choices[0].message.content)
-                
-                if attempt > 1:
-                    logger.info(f"成功處理 chunk {chunk_index + 1}/{total_chunks} (經過 {attempt} 次嘗試): {jid}")
-                else:
-                    logger.info(f"成功處理 chunk {chunk_index + 1}/{total_chunks}: {jid}")
-                
-                return ai_metadata
-                
-            except (APITimeoutError, APIConnectionError) as e:
-                if attempt >= self.max_retries:
-                    logger.error(
-                        f"達到最大重試次數 {self.max_retries} 次，chunk {chunk_index + 1}/{total_chunks} 處理失敗: {jid}. "
-                        f"錯誤: {str(e)}"
-                    )
-                    raise Exception(
-                        f"達到最大重試次數 {self.max_retries} 次，chunk {chunk_index + 1}/{total_chunks} 處理失敗: {jid}. "
-                        f"最後錯誤: {str(e)}"
-                    )
-                
-                wait_time = min((attempt * 5), self.max_wait_time)
-                logger.warning(
-                    f"API 請求超時或連接錯誤 (chunk {chunk_index + 1}/{total_chunks} 第 {attempt}/{self.max_retries} 次): {jid}. "
-                    f"錯誤: {str(e)}. {wait_time} 秒後重試..."
-                )
-                time.sleep(wait_time)
-                    
-            except APIError as e:
-                logger.error(f"API 錯誤 (chunk {chunk_index + 1}/{total_chunks}): {jid}. 錯誤: {str(e)}")
-                raise
-                
-            except Exception as e:
-                logger.error(f"未預期的錯誤 (chunk {chunk_index + 1}/{total_chunks}): {jid}. 錯誤: {str(e)}")
-                raise
+        resp = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "judgment_metadata",
+                    "strict": True,
+                    "schema": schema["json_schema"]
+                }
+            },
+            timeout=self.timeout,
+            reasoning_effort="medium"
+        )
         
-        logger.error(f"達到最大重試次數，chunk {chunk_index + 1}/{total_chunks} 處理失敗: {jid}")
-        raise Exception(f"達到最大重試次數，chunk {chunk_index + 1}/{total_chunks} 處理失敗: {jid}")
+        ai_metadata = json.loads(resp.choices[0].message.content)
+        logger.info(f"成功處理 chunk {chunk_index + 1}/{total_chunks}: {jid}")
+        
+        return ai_metadata
     
     def extract(
         self, 
@@ -217,71 +172,30 @@ class OpenAIMetadataExtractor(MetadataExtractor):
         )
         user_prompt = judgment.jfull
         
-        attempt = 0
+        logger.info(f"嘗試提取 metadata: {judgment.jid}")
         
-        while attempt < self.max_retries:
-            attempt += 1
-            try:
-                if attempt == 1:
-                    logger.info(f"嘗試提取 metadata: {judgment.jid}")
-                else:
-                    logger.warning(f"重試提取 metadata (第 {attempt}/{self.max_retries} 次): {judgment.jid}")
-                
-                resp = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    response_format={
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": "judgment_metadata",
-                            "strict": True,
-                            "schema": schema["json_schema"]
-                        }
-                    },
-                    timeout=self.timeout,
-                    reasoning_effort="medium"
-                )
-                
-                ai_metadata = json.loads(resp.choices[0].message.content)
-                
-                if attempt > 1:
-                    logger.info(f"成功提取 metadata (經過 {attempt} 次嘗試): {judgment.jid}")
-                else:
-                    logger.info(f"成功提取 metadata: {judgment.jid}")
-                    
-                return MetadataExtractionResult(
-                    defendants=ai_metadata.get("defendants", []),
-                    case_metadata=ai_metadata.get("case_metadata", {}),
-                )
-                
-            except (APITimeoutError, APIConnectionError) as e:
-                if attempt >= self.max_retries:
-                    logger.error(
-                        f"達到最大重試次數 {self.max_retries} 次，API 請求仍然失敗: {judgment.jid}. "
-                        f"錯誤: {str(e)}"
-                    )
-                    raise Exception(
-                        f"達到最大重試次數 {self.max_retries} 次，需要重新查詢資料: {judgment.jid}. "
-                        f"最後錯誤: {str(e)}"
-                    )
-                
-                wait_time = min((attempt * 5), self.max_wait_time)
-                logger.warning(
-                    f"API 請求超時或連接錯誤 (第 {attempt}/{self.max_retries} 次): {judgment.jid}. "
-                    f"錯誤: {str(e)}. {wait_time} 秒後重試..."
-                )
-                time.sleep(wait_time)
-                    
-            except APIError as e:
-                logger.error(f"API 錯誤: {judgment.jid}. 錯誤: {str(e)}")
-                raise
-                
-            except Exception as e:
-                logger.error(f"未預期的錯誤: {judgment.jid}. 錯誤: {str(e)}")
-                raise
+        resp = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "judgment_metadata",
+                    "strict": True,
+                    "schema": schema["json_schema"]
+                }
+            },
+            timeout=self.timeout,
+            reasoning_effort="medium"
+        )
         
-        logger.error(f"達到最大重試次數 {self.max_retries} 次，提取失敗: {judgment.jid}")
-        raise Exception(f"達到最大重試次數 {self.max_retries} 次，需要重新查詢資料: {judgment.jid}")
+        ai_metadata = json.loads(resp.choices[0].message.content)
+        logger.info(f"成功提取 metadata: {judgment.jid}")
+            
+        return MetadataExtractionResult(
+            defendants=ai_metadata.get("defendants", []),
+            case_metadata=ai_metadata.get("case_metadata", {}),
+        )

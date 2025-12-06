@@ -7,6 +7,7 @@ from ..infrastructure import (
     SupabaseJudgmentRepository,
     SupabaseMetadataRepository,
     OpenAIMetadataExtractor,
+    OpenAIClientFactory,
     GrokMetadataExtractor,
     FileSchemaProvider,
     AdjudicateJudgmentFilter,
@@ -39,6 +40,8 @@ class CLI:
             self.config.database.schema_name
         )
         
+        extractor_factory = None
+        
         if self.config.ai_provider == "grok":
             logger.info("使用 Grok AI 服務")
             timeout = httpx.Timeout(600.0, connect=60.0)
@@ -61,35 +64,13 @@ class CLI:
         else:
             logger.info("使用 OpenAI 服務")
             
-            # 優化長上下文處理的連接設定
-            # - HTTP/2 支援提升多路復用效能
-            # - Keepalive 連接池避免頻繁重連
-            # - 30 秒 keepalive 防止長時間請求斷線
-            timeout = httpx.Timeout(600.0, connect=60.0)
-            limits = httpx.Limits(
-                max_keepalive_connections=20,
-                max_connections=50,
-                keepalive_expiry=30.0
-            )
-            http_client = httpx.Client(
-                timeout=timeout,
-                limits=limits,
-                http2=True
+            openai_factory = OpenAIClientFactory(
+                self.config.openai_service,
+                timeout=600
             )
             
-            openai_client = OpenAI(
-                api_key=self.config.openai_service.api_key,
-                http_client=http_client,
-                max_retries=3
-            )
-            
-            extractor = OpenAIMetadataExtractor(
-                openai_client, 
-                self.config.openai_service.model,
-                timeout=600,
-                max_wait_time=300,
-                max_retries=3
-            )
+            extractor = openai_factory.create_extractor()
+            extractor_factory = openai_factory.create_extractor
         
         filter_service = AdjudicateJudgmentFilter()
         
@@ -105,6 +86,7 @@ class CLI:
             schema_provider=schema_provider,
             target_titles=self.config.process.target_titles,
             include_adjudicate=self.config.process.include_adjudicate,
+            extractor_factory=extractor_factory,
         )
 
         use_case_json = ExportJudgmentToJsonUseCase(
