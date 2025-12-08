@@ -176,7 +176,7 @@ class OpenAISummaryExtractor(SummaryExtractor):
         text_length = len(judgment.jfull)
         logger.info(f"判決文本字數: {text_length}")
         
-        if text_length > self.chunk_size:
+        if text_length > 45000:
             logger.info(f"文本長度 {text_length} 超過 {self.chunk_size}，啟動切塊處理")
             chunks = self._split_text_into_chunks(judgment.jfull)
             

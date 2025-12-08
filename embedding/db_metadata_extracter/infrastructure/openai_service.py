@@ -138,7 +138,7 @@ class OpenAIMetadataExtractor(MetadataExtractor):
         
         text_length = len(judgment.jfull)
         
-        if text_length > self.chunk_size:
+        if text_length > 45000:
             logger.info(f"文本長度 {text_length} 超過 {self.chunk_size}，啟動切塊處理")
             chunks = self._split_text_into_chunks(judgment.jfull)
             
