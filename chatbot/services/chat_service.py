@@ -41,13 +41,10 @@ class ChatService(IChatService):
             logger.info("沒有提供 conversation_id，將在獲得標題後創建新對話")
         
         rag_request = RAGSearchRequest(
-            collection=collection,
             query_text=question,
             conversation_id=conversation_id,
-            mode=mode,
-            limit=limit,
-            score_threshold=score_threshold,
-            streaming=False
+            streaming=False,
+            search_mode="rrf"
         )
         
         rag_response = await self.rag_client.search(rag_request, token, user_id)
@@ -285,13 +282,10 @@ class ChatService(IChatService):
             logger.info("沒有提供 conversation_id，將在獲得標題後創建新對話")
         
         rag_request = RAGSearchRequest(
-            collection=collection,
             query_text=question,
             conversation_id=conversation_id,
-            mode=mode,
-            limit=limit,
-            score_threshold=score_threshold,
-            streaming=True
+            streaming=True,
+            search_mode="rrf"
         )
         
         sources = []

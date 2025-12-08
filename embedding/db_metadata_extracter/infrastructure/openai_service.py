@@ -121,7 +121,7 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                 }
             },
             timeout=self.timeout,
-            reasoning_effort="medium"
+            reasoning_effort="low"
         )
         
         ai_metadata = json.loads(resp.choices[0].message.content)
@@ -189,7 +189,7 @@ class OpenAIMetadataExtractor(MetadataExtractor):
                 }
             },
             timeout=self.timeout,
-            reasoning_effort="medium"
+            reasoning_effort="low"
         )
         
         ai_metadata = json.loads(resp.choices[0].message.content)
