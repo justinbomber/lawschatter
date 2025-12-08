@@ -25,18 +25,23 @@ class RRFSearchOrchestrator(IDocumentSearchOrchestrator):
     
     def _extract_field_queries(
         self,
-        structured_filter: Dict[str, Any]
+        structured_filter_lst: List[Dict[str, Any]]
     ) -> Dict[str, str]:
+        """從所有 filter 中合併欄位查詢"""
         field_queries = {}
         
-        for field_name in MULTIVECTOR_FIELD_NAMES:
-            filter_field = field_name
-            if field_name == "role":
-                filter_field = "defendants_role"
-            
-            field_value = structured_filter.get(filter_field, "")
-            if field_value:
-                field_queries[field_name] = field_value
+        for structured_filter in structured_filter_lst:
+            for field_name in MULTIVECTOR_FIELD_NAMES:
+                if field_name in field_queries:
+                    continue
+                
+                filter_field = field_name
+                if field_name == "role":
+                    filter_field = "defendants_role"
+                
+                field_value = structured_filter.get(filter_field, "")
+                if field_value:
+                    field_queries[field_name] = field_value
         
         return field_queries
     
@@ -60,21 +65,16 @@ class RRFSearchOrchestrator(IDocumentSearchOrchestrator):
         detailed_results: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         simplified_results = []
+        seen_jids = set()
+        
         for result in detailed_results:
-            defendants = []
             payload = result.get('payload', {})
-            metadata = payload.get('metadata', {})
-            for defendant in metadata.get('defendants', []):
-                if isinstance(defendant, dict):
-                    defendants.append(defendant.get('defendant_name'))
-                else:
-                    defendants.append(defendant)
-            simplified_results.append({
-                "page_content": payload.get('page_content'),
-                "jid": metadata.get('jid_full'),
-                "defendants": defendants,
-                "chunk_type": metadata.get('summary_type')
-            })
+            jid = payload.get('jid')
+            
+            if jid and jid not in seen_jids:
+                seen_jids.add(jid)
+                simplified_results.append({"jid": jid})
+        
         return simplified_results
     
     async def orchestrate_search(
@@ -101,16 +101,64 @@ class RRFSearchOrchestrator(IDocumentSearchOrchestrator):
             structured_filter_lst = [{}]
         
         structured_filter = structured_filter_lst[0]
-        qdrant_filter, filter_limit = self.filter_service.to_qdrant_filter(structured_filter)
         
-        field_queries = self._extract_field_queries(structured_filter)
+        # 在調用 to_qdrant_filter 之前先提取欄位查詢和負向欄位
+        # 因為 to_qdrant_filter 會修改 structured_filter 中的 negated_fields
+        # 從所有 filter 中合併欄位查詢，確保負向欄位也有對應的查詢文本
+        field_queries = self._extract_field_queries(structured_filter_lst)
         negated_fields = self._extract_negated_fields(structured_filter)
         
         logger.info(f"欄位查詢: {json.dumps(field_queries, ensure_ascii=False)}")
         logger.info(f"負向欄位: {negated_fields}")
         
+        # 多向量搜尋時跳過 summary_type 過濾，因為向量搜尋本身已針對特定欄位
+        qdrant_filter, filter_limit = self.filter_service.to_qdrant_filter(structured_filter, skip_summary_type=True)
+        print(f"---> qdrant_filter: {qdrant_filter}")
+        print(f"---> filter_limit: {filter_limit}")
+        
+        # 當沒有分類欄位查詢，但有 metadata 過濾條件時，直接用 scroll 取得結果
         if not field_queries:
-            logger.info("沒有有效的欄位查詢，返回空結果")
+            has_filter_conditions = (
+                qdrant_filter.must or 
+                qdrant_filter.must_not or 
+                qdrant_filter.should
+            )
+            
+            if has_filter_conditions:
+                logger.info("沒有分類欄位查詢，但有過濾條件，使用 scroll 直接取得結果")
+                scroll_results, _ = await self.qdrant_client.scroll(
+                    collection_name=collection,
+                    scroll_filter=qdrant_filter,
+                    limit=filter_limit,
+                    with_payload=True,
+                    with_vectors=False
+                )
+                
+                if scroll_results:
+                    # 取得 jid 列表
+                    jids = set()
+                    for record in scroll_results:
+                        jid = record.payload.get('jid')
+                        if jid:
+                            jids.add(jid)
+                    
+                    logger.info(f"Scroll 取得 {len(jids)} 個 jid: {jids}")
+                    
+                    if jids:
+                        detailed_results = await self.filter_service.retrieve_results_by_jids(
+                            qdrant_client=self.qdrant_client,
+                            collection=self.settings.qdrant.collection_name,
+                            limit=filter_limit,
+                            aggregated_jids=jids
+                        )
+                        simplified_results = self._simplify_results(detailed_results)
+                        logger.info(f"最終搜尋結果: 總共 {len(simplified_results)} 個結果")
+                        return simplified_results
+                
+                logger.info("Scroll 無結果")
+                return []
+            
+            logger.info("沒有有效的欄位查詢和過濾條件，返回空結果")
             return []
         
         config = SearchConfig(

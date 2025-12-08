@@ -135,3 +135,9 @@ class IConversationRepository(ABC):
     async def update_conversation_title(self, token: str, conversation_id: str, title: str) -> None:
         pass
 
+
+class IJudgmentRepository(ABC):
+    @abstractmethod
+    async def get_judgment_summaries_by_jids(self, token: str, jids: List[str]) -> List[Dict[str, Any]]:
+        pass
+

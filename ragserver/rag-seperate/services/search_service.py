@@ -160,24 +160,31 @@ class SearchService(ISearchService):
                 prefetch_list.append(
                     models.Prefetch(
                         query=models.RecommendQuery(
-                            positive=[],
-                            negative=[dense_vector]
+                            recommend=models.RecommendInput(
+                                positive=[],
+                                negative=[dense_vector],
+                                strategy=models.RecommendStrategy.BEST_SCORE
+                            )
                         ),
                         using=dense_name,
                         limit=50,
                     )
                 )
+                logger.info(f"---> 欄位 '{field_name}' 使用負向 Dense 查詢")
                 prefetch_list.append(
                     models.Prefetch(
                         query=models.RecommendQuery(
-                            positive=[],
-                            negative=[sparse_vector]
+                            recommend=models.RecommendInput(
+                                positive=[],
+                                negative=[sparse_vector],
+                                strategy=models.RecommendStrategy.BEST_SCORE
+                            )
                         ),
                         using=sparse_name,
                         limit=50,
                     )
                 )
-                logger.info(f"欄位 '{field_name}' 使用負向 Hybrid 查詢")
+                logger.info(f"---> 欄位 '{field_name}' 使用負向 Sparse 查詢")
             else:
                 prefetch_list.append(
                     models.Prefetch(
@@ -186,6 +193,7 @@ class SearchService(ISearchService):
                         limit=50,
                     )
                 )
+                logger.info(f"---> 欄位 '{field_name}' 使用正向 Dense 查詢")
                 prefetch_list.append(
                     models.Prefetch(
                         query=sparse_vector,
@@ -193,7 +201,7 @@ class SearchService(ISearchService):
                         limit=50,
                     )
                 )
-                logger.info(f"欄位 '{field_name}' 使用正向 Hybrid 查詢")
+                logger.info(f"---> 欄位 '{field_name}' 使用正向 Hybrid 查詢")
         
         if not prefetch_list:
             raise ValueError("沒有有效的 field_queries 可以執行搜尋")

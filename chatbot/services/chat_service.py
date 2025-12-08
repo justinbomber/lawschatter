@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Any, AsyncGenerator
-from domain.interfaces import IChatService, IRAGClient, ILLMProvider, IConversationRepository
+from domain.interfaces import IChatService, IRAGClient, ILLMProvider, IConversationRepository, IJudgmentRepository
 from entities.models import RAGSearchRequest, ChatMessage
 from config.settings import Settings
 
@@ -13,11 +13,13 @@ class ChatService(IChatService):
         rag_client: IRAGClient,
         llm_provider: ILLMProvider,
         conversation_repository: IConversationRepository,
+        judgment_repository: IJudgmentRepository,
         settings: Settings
     ):
         self.rag_client = rag_client
         self.llm_provider = llm_provider
         self.conversation_repository = conversation_repository
+        self.judgment_repository = judgment_repository
         self.settings = settings
     
     async def process_chat(
@@ -50,6 +52,14 @@ class ChatService(IChatService):
         rag_response = await self.rag_client.search(rag_request, token, user_id)
         logger.info(f"RAG 搜尋完成，共 {rag_response.total} 筆結果")
         
+        jids = [result.jid for result in rag_response.results if result.jid]
+        logger.info(f"RAG 返回的 jid 列表: {jids}")
+        
+        judgment_summaries = await self.judgment_repository.get_judgment_summaries_by_jids(token, jids)
+        logger.info("=" * 50)
+        logger.info(f"從 Supabase 取得 {len(judgment_summaries)} 筆判決摘要")
+        logger.info("=" * 50)
+        
         history = []
         if conversation_id:
             history = await self.conversation_repository.get_conversation_messages(
@@ -57,14 +67,7 @@ class ChatService(IChatService):
             )
         logger.info(f"取得歷史對話，共 {len(history)} 筆")
         
-        sources = [
-            {
-                "page_content": result.page_content,
-                "jid": result.jid,
-                "defendants": result.defendants
-            }
-            for result in rag_response.results
-        ]
+        sources = judgment_summaries
         
         suggested_title = None
         if len(history) == 0:
@@ -224,11 +227,12 @@ class ChatService(IChatService):
 """
         
         for idx, result in enumerate(rag_results, 1):
-            # TODO: 把defendants轉換成中文
-            defendants = result.get('defendants', [])
             jid = result.get('jid', '')
-            page_content = result.get('page_content', '')
-            system_content += f"\n{idx}. [案號：{jid}][被告：{defendants}]\n{page_content}\n"
+            summary_type = result.get('summary_type', '')
+            content = result.get('content', '')
+            defendant_name = result.get('defendant_name', '')
+            
+            system_content += f"\n{idx}. [案號：{jid}][被告：{defendant_name}][類型：{summary_type}]\n{content}\n"
         
         messages = [
             ChatMessage(role="system", content=system_content),
@@ -288,22 +292,22 @@ class ChatService(IChatService):
             search_mode="rrf"
         )
         
-        sources = []
+        jids = []
         async for chunk in self.rag_client.search_stream(rag_request, token, user_id):
             if "status" in chunk:
                 yield {"type": "rag_status", "status": chunk["status"]}
             elif "type" in chunk and chunk["type"] == "final_results":
                 results = chunk.get("results", [])
                 logger.info(f"RAG 搜尋完成，共 {len(results)} 筆結果")
-                
-                sources = [
-                    {
-                        "page_content": result.get("page_content"),
-                        "jid": result.get("jid"),
-                        "defendants": result.get("defendants", [])
-                    }
-                    for result in results
-                ]
+                jids = [result.get("jid") for result in results if result.get("jid")]
+                logger.info(f"RAG 返回的 jid 列表: {jids}")
+        
+        judgment_summaries = await self.judgment_repository.get_judgment_summaries_by_jids(token, jids)
+        logger.info("=" * 50)
+        logger.info(f"從 Supabase 取得 {len(judgment_summaries)} 筆判決摘要")
+        logger.info("=" * 50)
+        
+        sources = judgment_summaries
         
         history = []
         if conversation_id:

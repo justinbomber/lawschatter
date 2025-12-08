@@ -75,7 +75,7 @@ class IFilterService(ABC):
         pass
     
     @abstractmethod
-    def to_qdrant_filter(self, filter_dict: dict) -> models.Filter:
+    def to_qdrant_filter(self, filter_dict: dict, skip_summary_type: bool = False) -> models.Filter:
         pass
     
     @abstractmethod

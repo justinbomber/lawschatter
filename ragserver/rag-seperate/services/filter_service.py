@@ -64,7 +64,7 @@ class FilterService(IFilterService):
                 
         return output_lst
     
-    def to_qdrant_filter(self, filter_dict: dict) -> tuple[models.Filter, int]:
+    def to_qdrant_filter(self, filter_dict: dict, skip_summary_type: bool = False) -> tuple[models.Filter, int]:
         must_conditions = []
         must_not_conditions = []
         # TODO: 增加欄位
@@ -75,7 +75,11 @@ class FilterService(IFilterService):
         negated_fields = set(filter_dict.get("negated_fields", []))
         limit = filter_dict.get("limit", 3)
         
-        for key in ["jid_full", "jyear", "jcase", "jno", "jdate", "summary_type"]:
+        filter_keys = ["jid_full", "jyear", "jcase", "jno", "jdate"]
+        if not skip_summary_type:
+            filter_keys.append("summary_type")
+        
+        for key in filter_keys:
             value = filter_dict.get(key)
             
             if key == "summary_type" and value is not None:

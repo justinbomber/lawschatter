@@ -1,7 +1,7 @@
 import logging
-from typing import List
+from typing import List, Dict, Any
 from supabase import create_client, ClientOptions
-from domain.interfaces import IConversationRepository, Message
+from domain.interfaces import IConversationRepository, IJudgmentRepository, Message
 from config.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -108,5 +108,38 @@ class SupabaseConversationRepository(IConversationRepository):
             .execute()
         
         logger.info(f"更新對話 {conversation_id} 的標題: {title}")
+
+
+class SupabaseJudgmentRepository(IJudgmentRepository):
+    def __init__(self, settings: Settings):
+        self.settings = settings
+        self.schema = settings.supabase.schema_name
+    
+    def _create_client_with_token(self, token: str):
+        return create_client(
+            self.settings.supabase.url,
+            self.settings.supabase.key,
+            options=ClientOptions(
+                headers={
+                    "Authorization": f"Bearer {token}"
+                },
+                schema=self.schema
+            )
+        )
+    
+    async def get_judgment_summaries_by_jids(self, token: str, jids: List[str]) -> List[Dict[str, Any]]:
+        if not jids:
+            return []
+        
+        client = self._create_client_with_token(token)
+        
+        response = client.table("judgment_summary") \
+            .select("jid, summary_type, content, defendent_name") \
+            .in_("jid", jids) \
+            .execute()
+        
+        logger.info(f"從 Supabase 取得 {len(response.data)} 筆判決摘要")
+        
+        return response.data
 
 
