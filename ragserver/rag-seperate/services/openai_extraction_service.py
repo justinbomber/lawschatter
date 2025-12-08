@@ -136,11 +136,11 @@ class OpenAIExtractionService(ILLMExtractionService):
         messages.append({"role": "user", "content": user_question})
         
         response = await self.client.responses.parse(
-            model="gpt-5",
+            model=self.settings.openai.model,
             input=messages,
             text_format=Filter,
             timeout=120,
-            reasoning={"effort": "high"}
+            reasoning={"effort": "medium"}
         )
         
         result = response.output_parsed
