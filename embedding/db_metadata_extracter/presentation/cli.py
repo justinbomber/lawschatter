@@ -44,7 +44,7 @@ class CLI:
         
         if self.config.ai_provider == "grok":
             logger.info("使用 Grok AI 服務")
-            timeout = httpx.Timeout(600.0, connect=60.0)
+            timeout = httpx.Timeout(float(self.config.xai_service.timeout), connect=60.0)
             http_client = httpx.Client(timeout=timeout)
             
             grok_client = OpenAI(
@@ -57,7 +57,7 @@ class CLI:
             extractor = GrokMetadataExtractor(
                 grok_client,
                 self.config.xai_service.model,
-                timeout=600,
+                timeout=self.config.xai_service.timeout,
                 max_wait_time=300,
                 max_retries=5
             )
@@ -66,7 +66,7 @@ class CLI:
             
             openai_factory = OpenAIClientFactory(
                 self.config.openai_service,
-                timeout=600
+                timeout=self.config.openai_service.timeout
             )
             
             extractor = openai_factory.create_extractor()

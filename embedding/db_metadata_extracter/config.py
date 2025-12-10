@@ -17,6 +17,7 @@ class DatabaseConfig:
 class OpenAIServiceConfig:
     api_key: str
     model: str = "gpt-5"
+    timeout: int = 600
 
 
 @dataclass
@@ -24,6 +25,7 @@ class XAIServiceConfig:
     api_key: str
     base_url: str = "https://api.x.ai/v1"
     model: str = "grok-4-fast-reasoning"
+    timeout: int = 600
 
 
 @dataclass
@@ -58,11 +60,13 @@ class AppConfig:
             openai_service=OpenAIServiceConfig(
                 api_key=os.getenv("OPENAI_API_KEY"),
                 model=os.getenv("OPENAI_MODEL", "gpt-5"),
+                timeout=int(os.getenv("OPENAI_TIMEOUT", "600")),
             ),
             xai_service=XAIServiceConfig(
                 api_key=os.getenv("XAI_API_KEY"),
                 base_url=os.getenv("XAI_BASE_URL", "https://api.x.ai/v1"),
                 model=os.getenv("XAI_MODEL", "grok-4-fast-reasoning"),
+                timeout=int(os.getenv("XAI_TIMEOUT", "600")),
             ),
             schema=SchemaConfig(
                 schema_file_path=os.getenv(

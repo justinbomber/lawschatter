@@ -56,7 +56,7 @@ class OpenAIServiceConfig:
     api_key: str
     model: str = "gpt-5"
     reasoning_effort: str = "medium"
-    timeout: int = 300
+    timeout: int = 600
 
 
 @dataclass
@@ -100,7 +100,7 @@ class AppConfig:
                 api_key=os.getenv("OPENAI_API_KEY"),
                 model=os.getenv("OPENAI_MODEL", "gpt-5"),
                 reasoning_effort=os.getenv("OPENAI_REASONING_EFFORT", "medium"),
-                timeout=int(os.getenv("OPENAI_TIMEOUT", "300")),
+                timeout=int(os.getenv("OPENAI_TIMEOUT", "600")),
             ),
             xai_service=XAIServiceConfig(
                 api_key=os.getenv("XAI_API_KEY"),
