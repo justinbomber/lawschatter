@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class QdrantHybridVectorStore(VectorStore):
     
     UNKNOWN_CONTENT_VALUE = "未知"
+    MAX_EMBEDDING_CHARS = 8000
     
     # TODO: 增加欄位
     JUDGMENT_VECTOR_NAMES = [
@@ -81,6 +82,16 @@ class QdrantHybridVectorStore(VectorStore):
     
     def _is_unknown_content(self, content: str) -> bool:
         return content.strip() == self.UNKNOWN_CONTENT_VALUE
+    
+    def _prepare_embedding_text(self, content: str) -> str:
+        content = content.strip()
+        length = len(content)
+        if length <= self.MAX_EMBEDDING_CHARS:
+            return content
+        logger.info(
+            f"嵌入內容長度 {length} 超過上限 {self.MAX_EMBEDDING_CHARS}，將截斷後再送出嵌入請求"
+        )
+        return content[:self.MAX_EMBEDDING_CHARS]
     
     def _get_vector_dimension(self) -> int:
         if self._vector_dimension is None:
@@ -226,6 +237,8 @@ class QdrantHybridVectorStore(VectorStore):
             
             documents_by_defendant = {}
             all_defendants_set = set()
+            all_defendants_detail = []
+            common_docs = []
             base_metadata = None
             
             for doc in documents:
@@ -243,6 +256,11 @@ class QdrantHybridVectorStore(VectorStore):
                         'case_type': doc.metadata.get('case_type'),
                         'case_metadata': doc.metadata.get('case_metadata', {}),
                     }
+                    if not all_defendants_detail and len(doc.metadata.get('defendants', [])) > 1:
+                        all_defendants_detail = doc.metadata.get('defendants', [])
+                
+                if len(defendants) > 1:
+                    all_defendants_detail = defendants
                 
                 if len(defendants) == 1:
                     defendant_name = defendants[0].get('defendant_name', 'no_defendant')
@@ -251,12 +269,34 @@ class QdrantHybridVectorStore(VectorStore):
                         documents_by_defendant[defendant_name] = []
                     documents_by_defendant[defendant_name].append(doc)
                 else:
+                    common_docs.append(doc)
                     if 'all' not in documents_by_defendant:
                         documents_by_defendant['all'] = []
                     documents_by_defendant['all'].append(doc)
+                    for defendant in defendants:
+                        defendant_name = defendant.get('defendant_name')
+                        if defendant_name:
+                            all_defendants_set.add(defendant_name)
             
             if not documents_by_defendant:
                 documents_by_defendant['all'] = documents
+                all_defendants_detail = all_defendants_detail or documents[0].metadata.get('defendants', [])
+                for defendant in all_defendants_detail:
+                    name = defendant.get('defendant_name')
+                    if name:
+                        all_defendants_set.add(name)
+            
+            if not all_defendants_set and all_defendants_detail:
+                for defendant in all_defendants_detail:
+                    name = defendant.get('defendant_name')
+                    if name:
+                        all_defendants_set.add(name)
+            
+            if common_docs and all_defendants_set:
+                for defendant_name in all_defendants_set:
+                    if defendant_name not in documents_by_defendant:
+                        documents_by_defendant[defendant_name] = []
+                    documents_by_defendant[defendant_name].extend(common_docs)
             
             for defendant_key, defendant_docs in documents_by_defendant.items():
                 point_id = None
@@ -289,7 +329,10 @@ class QdrantHybridVectorStore(VectorStore):
                 
                 judgment_metadata = base_metadata.copy()
                 if defendant_key == 'all':
-                    judgment_metadata['defendants'] = list(all_defendants_set) if all_defendants_set else []
+                    if all_defendants_detail:
+                        judgment_metadata['defendants'] = all_defendants_detail
+                    else:
+                        judgment_metadata['defendants'] = list(all_defendants_set) if all_defendants_set else []
                 else:
                     matching_defendant = None
                     for doc in defendant_docs:
@@ -304,6 +347,7 @@ class QdrantHybridVectorStore(VectorStore):
                 for summary_type, type_docs in grouped_by_type.items():
                     contents = [d.content for d in type_docs]
                     combined_content = " ".join(contents)
+                    combined_content = self._prepare_embedding_text(combined_content)
                     
                     vector_name = summary_type
                     
