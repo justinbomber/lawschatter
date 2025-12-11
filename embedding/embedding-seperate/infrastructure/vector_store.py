@@ -81,7 +81,8 @@ class QdrantHybridVectorStore(VectorStore):
         self._vector_dimension = None
     
     def _is_unknown_content(self, content: str) -> bool:
-        return content.strip() == self.UNKNOWN_CONTENT_VALUE
+        stripped = content.strip()
+        return stripped == "" or stripped == self.UNKNOWN_CONTENT_VALUE
     
     def _prepare_embedding_text(self, content: str) -> str:
         content = content.strip()
