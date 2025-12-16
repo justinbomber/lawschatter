@@ -12,7 +12,7 @@ export default defineConfig({
       'localhost',
       '127.0.0.1'
     ],
-    open: true,
+    open: false,
     proxy: {
       // 代理 Supabase Auth API 請求
       '/supabase-auth': {
