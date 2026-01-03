@@ -134,7 +134,7 @@ class SupabaseJudgmentRepository(IJudgmentRepository):
         client = self._create_client_with_token(token)
         
         response = client.table("judgment_summary") \
-            .select("jid, summary_type, content, defendent_name") \
+            .select("jid_full, summary_type, content, defendent_name") \
             .in_("jid", jids) \
             .execute()
         

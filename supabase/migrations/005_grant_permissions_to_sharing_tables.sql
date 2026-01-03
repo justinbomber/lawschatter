@@ -114,3 +114,20 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "lawschatter" TO service_role;
 -- 4. 未來保險：確保以後在此 schema 新建立的 table，service_role 也能自動擁有權限
 ALTER DEFAULT PRIVILEGES IN SCHEMA "lawschatter" GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA "lawschatter" GRANT USAGE, SELECT ON SEQUENCES TO service_role;
+
+-- 1. 針對 case_types 開啟 RLS
+ALTER TABLE "lawschatter"."case_types" ENABLE ROW LEVEL SECURITY;
+
+-- 2. 針對 judgment_metadata 開啟 RLS
+ALTER TABLE "lawschatter"."judgment_metadata" ENABLE ROW LEVEL SECURITY;
+
+-- 3. 針對 judgment_summary 開啟 RLS
+ALTER TABLE "lawschatter"."judgment_summary" ENABLE ROW LEVEL SECURITY;
+
+-- 4. 針對 main_judgments 開啟 RLS
+ALTER TABLE "lawschatter"."main_judgments" ENABLE ROW LEVEL SECURITY;
+-- 這樣一般人連 "嘗試讀取" 的資格都沒有，會直接報錯 403
+REVOKE ALL ON "lawschatter"."case_types" FROM anon, authenticated;
+REVOKE ALL ON "lawschatter"."judgment_metadata" FROM anon, authenticated;
+REVOKE ALL ON "lawschatter"."judgment_summary" FROM anon, authenticated;
+REVOKE ALL ON "lawschatter"."main_judgments" FROM anon, authenticated;

@@ -54,8 +54,8 @@ class ChatService(IChatService):
         
         jids = [result.jid for result in rag_response.results if result.jid]
         logger.info(f"RAG 返回的 jid 列表: {jids}")
-        
-        judgment_summaries = await self.judgment_repository.get_judgment_summaries_by_jids(token, jids)
+         
+        judgment_summaries = await self.judgment_repository.get_judgment_summaries_by_jids(self.settings.supabase.key, jids)
         logger.info("=" * 50)
         logger.info(f"從 Supabase 取得 {len(judgment_summaries)} 筆判決摘要")
         logger.info("=" * 50)
