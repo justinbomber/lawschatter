@@ -23,7 +23,7 @@ class SupabaseJudgmentRepository(JudgmentRepository):
             self.client
             .schema(self.schema_name)
             .table("main_judgments")
-            .select("jdate")
+            .select("jdate", distinct=True)
             .order("jdate", desc=True)
             .execute()
         )
