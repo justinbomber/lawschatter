@@ -136,7 +136,7 @@ class SupabaseJudgmentRepository(IJudgmentRepository):
         logger.info(f"token: {token}")
         
         response = client.table("v_judgment_summary_full") \
-            .select("jid_full, summary_type, content, defendent_name") \
+            .select("jid", "jid_full, summary_type, content, defendent_name") \
             .in_("jid", jids) \
             .execute()
         
