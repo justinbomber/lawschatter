@@ -23,7 +23,8 @@ BEGIN
     WHERE j.jdate = p_jdate
         AND j.jtitle = ANY(p_target_titles)
         AND NOT EXISTS (
-            SELECT 1
+            SELECT 1, distinct=True
+        
             FROM lawschatter.judgment_metadata m
             WHERE m.jid = j.jid
         )
@@ -32,6 +33,18 @@ BEGIN
             OR LEFT(j.jfull, 20) NOT LIKE '%裁定%'
         )
     ORDER BY j.jid;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- get unique jdates
+CREATE OR REPLACE FUNCTION get_unique_jdates()
+RETURNS TABLE(jdate DATE) AS $$
+BEGIN
+    RETURN QUERY 
+    SELECT DISTINCT m.jdate 
+    FROM lawschatter.main_judgments m
+    ORDER BY m.jdate DESC;
 END;
 $$ LANGUAGE plpgsql;
 
