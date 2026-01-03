@@ -1,8 +1,7 @@
 import axios from 'axios';
 import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
 
-const SUPABASE_URL = 'https://lawschatter.mooo.com';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // 一律走同網域的反向代理前綴，對應 Nginx 設定
 const AUTH_BASE_URL = '/supabase-auth';
