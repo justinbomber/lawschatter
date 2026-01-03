@@ -102,3 +102,15 @@ grant select, insert, update, delete on lawschatter.user_profiles to authenticat
 -- ============================================================================
 grant usage, select on sequence lawschatter.shared_messages_id_seq to authenticated;
 
+-- 1. 允許 service_role 進入 lawschatter schema
+GRANT USAGE ON SCHEMA "lawschatter" TO service_role;
+
+-- 2. 關鍵：允許 service_role 對該 schema 下的所有表格進行 CRUD (包含 INSERT)
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "lawschatter" TO service_role;
+
+-- 3. (非常重要) 如果你的表有 ID 是自動遞增 (Serial/Identity)，必須給 Sequence 權限，不然插入會失敗
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "lawschatter" TO service_role;
+
+-- 4. 未來保險：確保以後在此 schema 新建立的 table，service_role 也能自動擁有權限
+ALTER DEFAULT PRIVILEGES IN SCHEMA "lawschatter" GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA "lawschatter" GRANT USAGE, SELECT ON SEQUENCES TO service_role;

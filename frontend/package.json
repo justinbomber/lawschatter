@@ -19,8 +19,8 @@
     "start": "vite",
     "dev": "vite",
     "local": "vite --config vite.config.local.mjs",
-    "build": "vite build",
-    "preview": "vite preview",
+    "build": "vite build --config vite.config.mjs",
+    "preview": "vite preview --config vite.config.mjs",
     "build:preview": "vite build && vite preview"
   },
   "eslintConfig": {
