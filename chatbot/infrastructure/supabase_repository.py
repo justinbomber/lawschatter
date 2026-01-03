@@ -132,6 +132,8 @@ class SupabaseJudgmentRepository(IJudgmentRepository):
             return []
         
         client = self._create_client_with_token(token)
+        logger.info(f"jids: {jids}")
+        logger.info(f"token: {token}")
         
         response = client.table("v_judgment_summary_full") \
             .select("jid_full, summary_type, content, defendent_name") \
