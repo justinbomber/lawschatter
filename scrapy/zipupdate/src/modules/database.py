@@ -17,6 +17,12 @@ class DatabaseConnection:
         return result
 
     def check_judgment_exists(self, jid: str):
+        print("config:", self.config)
+        print("config.supabase_url:", self.config.supabase_url)
+        print("config.supabase_service_key:", self.config.supabase_service_key)
+        print("target_schema:", self.config.target_schema)
+        print("target_table:", self.config.target_table)
+        print("jid:", jid)
         result = self.client.schema(self.config.target_schema).table(self.config.target_table).select("jid").eq("jid", jid).execute()
         return len(result.data) > 0
 
