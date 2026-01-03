@@ -131,3 +131,13 @@ REVOKE ALL ON "lawschatter"."case_types" FROM anon, authenticated;
 REVOKE ALL ON "lawschatter"."judgment_metadata" FROM anon, authenticated;
 REVOKE ALL ON "lawschatter"."judgment_summary" FROM anon, authenticated;
 REVOKE ALL ON "lawschatter"."main_judgments" FROM anon, authenticated;
+
+-- 1. 確保 service_role 擁有讀取這個 View 的權限
+GRANT SELECT ON lawschatter.v_judgment_summary_full TO service_role;
+
+-- 2. 撤銷一般使用者的所有權限 (包含讀取)
+REVOKE ALL ON lawschatter.v_judgment_summary_full FROM anon, authenticated;
+
+-- 3. (額外保險) 確保 public 角色也沒有權限
+-- Postgres 的 public 角色有時會預設包含所有人，明確撤銷比較安全
+REVOKE ALL ON lawschatter.v_judgment_summary_full FROM public;
