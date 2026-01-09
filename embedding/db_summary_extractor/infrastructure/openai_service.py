@@ -44,9 +44,20 @@ class OpenAISummaryExtractor(SummaryExtractor):
         self.timeout = timeout
         self.chunk_size = chunk_size
         self.overlap_ratio = overlap_ratio
+        self.force_chunk_mode = False  # 強制切塊模式
     
     def set_client(self, client: OpenAI) -> None:
         self.client = client
+    
+    def enable_force_chunk_mode(self) -> None:
+        """啟用強制切塊模式"""
+        self.force_chunk_mode = True
+        logger.info("已啟用強制切塊模式")
+    
+    def disable_force_chunk_mode(self) -> None:
+        """停用強制切塊模式"""
+        self.force_chunk_mode = False
+        logger.info("已停用強制切塊模式")
     
     def _split_text_into_chunks(self, text: str) -> List[str]:
         text_length = len(text)
@@ -176,8 +187,12 @@ class OpenAISummaryExtractor(SummaryExtractor):
         text_length = len(judgment.jfull)
         logger.info(f"判決文本字數: {text_length}")
         
-        if text_length > 45000:
-            logger.info(f"文本長度 {text_length} 超過 {self.chunk_size}，啟動切塊處理")
+        # 當字數超過 45000 或啟用強制切塊模式時，使用切塊處理
+        if text_length > 45000 or self.force_chunk_mode:
+            if self.force_chunk_mode:
+                logger.info(f"強制切塊模式已啟用，文本長度 {text_length}，啟動切塊處理")
+            else:
+                logger.info(f"文本長度 {text_length} 超過 45000，啟動切塊處理")
             chunks = self._split_text_into_chunks(judgment.jfull)
             
             previous_result = {}

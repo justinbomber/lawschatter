@@ -96,6 +96,9 @@ class ExtractSummaryUseCase:
         lock_point_id = self.hash_generator.generate(jid)
         self.current_lock_point_id = lock_point_id
         lock_inserted = False
+        retry_count = 0
+        max_retries_before_chunk = 3
+        force_chunk_enabled = False
         
         while True:
             if not lock_inserted:
@@ -119,23 +122,48 @@ class ExtractSummaryUseCase:
                 
                 self.summary_repo.delete_lock_record(lock_point_id)
                 
+                # 成功後停用強制切塊模式
+                if force_chunk_enabled and hasattr(self.extractor, 'disable_force_chunk_mode'):
+                    self.extractor.disable_force_chunk_mode()
+                
                 logger.info(f"成功處理並插入 {len(summary_records)} 筆 summary: {jid}")
                 self.current_lock_point_id = None
                 return True
                 
             except (APITimeoutError, APIConnectionError) as e:
-                logger.warning(
-                    f"API 請求超時或連接錯誤: {jid}. 錯誤: {str(e)}. "
-                    f"刪除 lock record 並重建 client 後重試..."
-                )
-                self.summary_repo.delete_lock_record(lock_point_id)
-                lock_inserted = False
-                self._rebuild_extractor()
+                retry_count += 1
+                
+                if retry_count >= max_retries_before_chunk and not force_chunk_enabled:
+                    # 達到重試次數上限，啟用強制切塊模式
+                    logger.warning(
+                        f"API 請求已失敗 {retry_count} 次: {jid}. "
+                        f"啟用強制切塊模式重試..."
+                    )
+                    self._rebuild_extractor()
+                    # 重建後再啟用強制切塊模式
+                    if hasattr(self.extractor, 'enable_force_chunk_mode'):
+                        self.extractor.enable_force_chunk_mode()
+                        force_chunk_enabled = True
+                    # 重置重試計數，讓切塊模式有機會重試
+                    retry_count = 0
+                else:
+                    logger.warning(
+                        f"API 請求超時或連接錯誤 (第 {retry_count} 次): {jid}. "
+                        f"錯誤: {str(e)}. 重建 client 後重試..."
+                    )
+                    self._rebuild_extractor()
+                    # 重建後保持強制切塊模式狀態
+                    if force_chunk_enabled and hasattr(self.extractor, 'enable_force_chunk_mode'):
+                        self.extractor.enable_force_chunk_mode()
+                
                 continue
                 
             except Exception as e:
                 logger.error(f"處理判決時發生錯誤，跳過此判決: {jid}. 錯誤: {str(e)}")
                 if lock_inserted:
                     self.summary_repo.delete_lock_record(lock_point_id)
+                # 發生錯誤時也停用強制切塊模式
+                if force_chunk_enabled and hasattr(self.extractor, 'disable_force_chunk_mode'):
+                    self.extractor.disable_force_chunk_mode()
                 self.current_lock_point_id = None
                 return False
