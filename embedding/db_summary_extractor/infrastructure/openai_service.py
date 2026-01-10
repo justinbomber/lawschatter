@@ -182,7 +182,7 @@ class OpenAISummaryExtractor(SummaryExtractor):
         judgment: JudgmentRecord, 
         schema: Dict[str, Any]
     ) -> SummaryExtractionResult:
-        logger.info(f"使用 OpenAI 提取 summary: {judgment.jid}")
+        logger.info(f"使用 {self.model} 提取 summary: {judgment.jid}")
         
         text_length = len(judgment.jfull)
         logger.info(f"判決文本字數: {text_length}")
