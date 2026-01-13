@@ -110,3 +110,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# AWS Lambda Handler
+from mangum import Mangum
+handler = Mangum(app, lifespan="off")
