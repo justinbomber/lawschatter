@@ -1,7 +1,8 @@
 import logging
 import signal
 import sys
-from typing import List, Optional
+from typing import List, Optional, Callable
+from openai import APITimeoutError, APIConnectionError
 from ..domain import (
     JudgmentRepository,
     MetadataRepository,
@@ -25,6 +26,7 @@ class ExtractMetadataUseCase:
         schema_provider: SchemaProvider,
         target_titles: List[str],
         include_adjudicate: bool = False,
+        extractor_factory: Optional[Callable[[], MetadataExtractor]] = None,
     ):
         self.judgment_repo = judgment_repo
         self.metadata_repo = metadata_repo
@@ -33,6 +35,7 @@ class ExtractMetadataUseCase:
         self.schema_provider = schema_provider
         self.target_titles = target_titles
         self.include_adjudicate = include_adjudicate
+        self.extractor_factory = extractor_factory
         self.current_processing_jid: Optional[str] = None
         self._setup_signal_handlers()
     
@@ -87,6 +90,11 @@ class ExtractMetadataUseCase:
         )
         return unprocessed
     
+    def _rebuild_extractor(self) -> None:
+        if self.extractor_factory:
+            logger.info("重建 extractor 和 OpenAI client")
+            self.extractor = self.extractor_factory()
+    
     def _process_judgment(self, jid: str, jdate: str) -> bool:
         logger.info(f"處理判決: {jid}")
         
@@ -100,24 +108,26 @@ class ExtractMetadataUseCase:
         
         while True:
             attempt += 1
+            
+            if attempt > 1:
+                logger.info(f"重新查詢資料並嘗試處理判決 (第 {attempt} 次): {jid}")
+            
+            if not lock_inserted:
+                self.metadata_repo.insert_lock_record(jid, jdate)
+                lock_inserted = True
+            
+            judgment = self.judgment_repo.get_judgment(jid)
+            
+            if not self.include_adjudicate:
+                if self.filter_service.should_ignore(judgment):
+                    logger.info(f"跳過判決 {jid}（符合過濾條件）")
+                    self.metadata_repo.delete_lock_record(jid)
+                    self.current_processing_jid = None
+                    return False
+            
+            schema = self.schema_provider.get_schema()
+            
             try:
-                if attempt > 1:
-                    logger.info(f"重新查詢資料並嘗試處理判決 (第 {attempt} 次): {jid}")
-                
-                if attempt == 1:
-                    self.metadata_repo.insert_lock_record(jid, jdate)
-                    lock_inserted = True
-                
-                judgment = self.judgment_repo.get_judgment(jid)
-                
-                if not self.include_adjudicate:
-                    if self.filter_service.should_ignore(judgment):
-                        logger.info(f"跳過判決 {jid}（符合過濾條件）")
-                        self.metadata_repo.delete_lock_record(jid)
-                        self.current_processing_jid = None
-                        return False
-                
-                schema = self.schema_provider.get_schema()
                 extraction_result = self.extractor.extract(judgment, schema)
                 
                 metadata_record = MetadataRecord.from_judgment_and_extraction(
@@ -134,19 +144,20 @@ class ExtractMetadataUseCase:
                 self.current_processing_jid = None
                 return True
                 
-            except Exception as e:
-                error_msg = str(e)
+            except (APITimeoutError, APIConnectionError) as e:
+                logger.warning(
+                    f"API 請求超時或連接錯誤: {jid}. 錯誤: {str(e)}. "
+                    f"刪除 lock record 並重建 client 後重試..."
+                )
+                self.metadata_repo.delete_lock_record(jid)
+                lock_inserted = False
+                self._rebuild_extractor()
+                continue
                 
-                if "達到最大重試次數" in error_msg and "需要重新查詢資料" in error_msg:
-                    logger.warning(
-                        f"API 重試次數用盡，準備重新查詢資料並繼續重試: {jid}. "
-                        f"錯誤: {error_msg}"
-                    )
-                    continue
-                else:
-                    logger.error(f"處理判決時發生錯誤，跳過此判決: {jid}. 錯誤: {error_msg}")
-                    if lock_inserted:
-                        self.metadata_repo.delete_lock_record(jid)
-                    self.current_processing_jid = None
-                    return False
+            except Exception as e:
+                logger.error(f"處理判決時發生錯誤，跳過此判決: {jid}. 錯誤: {str(e)}")
+                if lock_inserted:
+                    self.metadata_repo.delete_lock_record(jid)
+                self.current_processing_jid = None
+                return False
 

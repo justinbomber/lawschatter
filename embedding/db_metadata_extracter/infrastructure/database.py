@@ -19,14 +19,15 @@ class SupabaseJudgmentRepository(JudgmentRepository):
     
     def get_all_dates_desc(self) -> List[str]:
         logger.info("擷取所有獨特日期（遞減排序）")
-        resp = (
-            self.client
-            .schema(self.schema_name)
-            .table("main_judgments")
-            .select("jdate")
-            .order("jdate", desc=True)
-            .execute()
-        )
+        # resp = (
+        #     self.client
+        #     .schema(self.schema_name)
+        #     .table("main_judgments")
+        #     .select("jdate", distinct=True)
+        #     .order("jdate", desc=True)
+        #     .execute()
+        # )
+        resp = self.client.rpc("get_unique_jdates").execute()
         unique_dates = sorted({row["jdate"] for row in resp.data}, reverse=True)
         logger.info(f"找到 {len(unique_dates)} 個獨特日期")
         return unique_dates

@@ -11,7 +11,7 @@ from config.settings import Settings, FieldsConfig
 logger = logging.getLogger(__name__)
 
 
-class FilterService(IFilterService):
+class MultivectorFilterService(IFilterService):
     def __init__(self, settings: Settings, llm_extraction_service: ILLMExtractionService):
         self.settings = settings
         self.llm_extraction_service = llm_extraction_service
@@ -75,6 +75,7 @@ class FilterService(IFilterService):
         negated_fields = set(filter_dict.get("negated_fields", []))
         limit = filter_dict.get("limit", 3)
         
+        # 在多向量搜尋中，跳過 summary_type 過濾（向量搜尋本身已針對特定欄位）
         filter_keys = ["jid_full", "jyear", "jcase", "jno", "jdate"]
         if not skip_summary_type:
             filter_keys.append("summary_type")
@@ -89,7 +90,7 @@ class FilterService(IFilterService):
                         item = "role"
                     list_conditions.append(
                         models.FieldCondition(
-                            key=f"metadata.summary_type",
+                            key=f"summary_type",
                             match=models.MatchPhrase(phrase=item)
                         )
                     )
@@ -108,7 +109,7 @@ class FilterService(IFilterService):
                 # 為每個分詞結果創建 MatchPhrase 條件
                 for token in tokens:
                     condition = models.FieldCondition(
-                        key=f"metadata.{key}",
+                        key=f"{key}",
                         match=models.MatchPhrase(phrase=token)
                     )
                     must_conditions.append(condition)
@@ -116,7 +117,7 @@ class FilterService(IFilterService):
                 if isinstance(value, int):
                     must_conditions.append(
                         models.FieldCondition(
-                            key=f"metadata.{key}",
+                            key=f"{key}",
                             match=models.MatchValue(value=value)
                         )
                     )
@@ -124,7 +125,7 @@ class FilterService(IFilterService):
                 if isinstance(value, int):
                     must_conditions.append(
                         models.FieldCondition(
-                            key=f"metadata.{key}",
+                            key=f"{key}",
                             match=models.MatchValue(value=value)
                         )
                     )
@@ -133,14 +134,14 @@ class FilterService(IFilterService):
                     if value != "":
                         must_conditions.append(
                             models.FieldCondition(
-                                key=f"metadata.{key}",
+                                key=f"{key}",
                                 match=models.MatchValue(value=value)
                             )
                         )
                 elif isinstance(value, bool):
                     must_conditions.append(
                         models.FieldCondition(
-                            key=f"metadata.{key}",
+                            key=f"{key}",
                             match=models.MatchValue(value=value)
                         )
                     )
@@ -157,12 +158,12 @@ class FilterService(IFilterService):
                     if isinstance(value, str):
                         if value != "":
                             condition = models.FieldCondition(
-                                key=f"metadata.case_metadata.{key}",
+                                key=f"case_metadata.{key}",
                                 match=models.MatchValue(value=value)
                             )
                     elif isinstance(value, bool):
                         condition = models.FieldCondition(
-                            key=f"metadata.case_metadata.{key}",
+                            key=f"case_metadata.{key}",
                             match=models.MatchValue(value=value)
                         )
                     
@@ -243,7 +244,7 @@ class FilterService(IFilterService):
                                         # 為每個分詞結果創建條件
                                         for token in tokens:
                                             condition = models.FieldCondition(
-                                                key=f"metadata.defendants[].{key}",
+                                                key=f"defendants[].{key}",
                                                 match=models.MatchPhrase(phrase=token)
                                             )
                                             if is_negated:
@@ -253,7 +254,7 @@ class FilterService(IFilterService):
                                     else:
                                         # 其他列表類型字段維持原本邏輯
                                         condition = models.FieldCondition(
-                                            key=f"metadata.defendants[].{key}",
+                                            key=f"defendants[].{key}",
                                             match=models.MatchPhrase(phrase=cleaned_item)
                                         )
                                         if condition:
@@ -266,12 +267,12 @@ class FilterService(IFilterService):
                         if isinstance(value, str):
                             if value != "":
                                 condition = models.FieldCondition(
-                                    key=f"metadata.defendants[].{key}",
+                                    key=f"defendants[].{key}",
                                     match=models.MatchValue(value=value)
                                 )
                         elif isinstance(value, (bool, int)):
                             condition = models.FieldCondition(
-                                key=f"metadata.defendants[].{key}",
+                                key=f"defendants[].{key}",
                                 match=models.MatchValue(value=value)
                             )
                     
@@ -315,7 +316,7 @@ class FilterService(IFilterService):
             scroll_results, _ = await qdrant_client.scroll(
                 collection_name=collection,
                 scroll_filter=models.Filter(
-                    must=[models.FieldCondition(key="metadata.jid", match=models.MatchValue(value=jid))]
+                    must=[models.FieldCondition(key="jid", match=models.MatchValue(value=jid))]
                 ),
                 # limit=50,
                 with_payload=True,
@@ -324,8 +325,8 @@ class FilterService(IFilterService):
             logger.info(f"  從 Qdrant 取回 {len(scroll_results or [])} 條記錄")
             
             for idx, record in enumerate(scroll_results or []):
-                record_jid = record.payload.get('metadata', {}).get('jid', 'unknown')
-                record_jid_full = record.payload.get('metadata', {}).get('jid_full', 'unknown')
+                record_jid = record.payload.get('jid', 'unknown')
+                record_jid_full = record.payload.get('jid_full', 'unknown')
                 if idx == 0:
                     logger.info(f"    第一條記錄 - jid: {record_jid}, jid_full: {record_jid_full}")
                 final_results.append({

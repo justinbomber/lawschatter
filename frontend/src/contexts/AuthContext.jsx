@@ -1,5 +1,75 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
+// 解碼 Base64url（JWT 使用的編碼格式）
+const decodeBase64Url = (str) => {
+  if (!str || typeof str !== 'string') return null;
+  
+  // 移除可能的空白字符
+  let base64 = str.trim();
+  
+  // 將 Base64url 轉換為標準 Base64
+  base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+  
+  // 移除非 Base64 字符
+  base64 = base64.replace(/[^A-Za-z0-9+/]/g, '');
+  
+  // 添加填充（padding）
+  const padding = base64.length % 4;
+  if (padding) {
+    base64 += '='.repeat(4 - padding);
+  }
+  
+  // 解碼並處理 UTF-8
+  const decoded = atob(base64);
+  return decodeURIComponent(
+    decoded.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+  );
+};
+
+// 安全解析 JWT payload
+const safeParseJWTPayload = (token) => {
+  if (!token || typeof token !== 'string') return null;
+  
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  
+  // 驗證 payload 部分是否有效
+  const payloadPart = parts[1];
+  if (!payloadPart || payloadPart.length < 4) return null;
+  
+  // 安全解碼
+  let decoded;
+  let base64 = payloadPart.trim().replace(/-/g, '+').replace(/_/g, '/');
+  base64 = base64.replace(/[^A-Za-z0-9+/]/g, '');
+  const padding = base64.length % 4;
+  if (padding) base64 += '='.repeat(4 - padding);
+  
+  // 使用 atob 解碼
+  let binaryString;
+  try {
+    binaryString = atob(base64);
+  } catch (e) {
+    return null;
+  }
+  
+  // 處理 UTF-8
+  try {
+    decoded = decodeURIComponent(
+      binaryString.split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+    );
+  } catch (e) {
+    // 如果 UTF-8 解碼失敗，使用原始字串
+    decoded = binaryString;
+  }
+  
+  // 解析 JSON
+  try {
+    return JSON.parse(decoded);
+  } catch (e) {
+    return null;
+  }
+};
+
 // 初始狀態
 const initialState = {
   isAuthenticated: false,
@@ -117,17 +187,13 @@ export const AuthProvider = ({ children }) => {
 
   // 檢查 JWT token 是否有效
   const isTokenValid = (token) => {
-    try {
-      if (!token) return false;
-      
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Date.now() / 1000;
-      
-      return payload.exp > currentTime;
-    } catch (error) {
-      console.error('Token 驗證錯誤:', error);
-      return false;
-    }
+    if (!token) return false;
+    
+    const payload = safeParseJWTPayload(token);
+    if (!payload || !payload.exp) return false;
+    
+    const currentTime = Date.now() / 1000;
+    return payload.exp > currentTime;
   };
 
   // 登入函數
@@ -174,35 +240,31 @@ export const AuthProvider = ({ children }) => {
 
   // 從 JWT token 解析用戶資訊
   const parseJWTUserData = (token) => {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      
-      // 清理和驗證 display_name，移除亂碼字元
-      let displayName = payload.user_metadata?.display_name || '';
-      if (displayName) {
-        // 過濾掉非可讀字元，只保留基本字母、數字、中文、空格和常用標點
-        displayName = displayName.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-_\.]/g, '');
-        // 如果清理後為空，使用 username 或 email 前綴
-        if (!displayName.trim()) {
-          displayName = payload.user_metadata?.username || 
-                       payload.email?.split('@')[0] || 
-                       '使用者';
-        }
+    const payload = safeParseJWTPayload(token);
+    if (!payload) return {};
+    
+    // 清理和驗證 display_name，移除亂碼字元
+    let displayName = payload.user_metadata?.display_name || '';
+    if (displayName) {
+      // 過濾掉非可讀字元，只保留基本字母、數字、中文、空格和常用標點
+      displayName = displayName.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s\-_\.]/g, '');
+      // 如果清理後為空，使用 username 或 email 前綴
+      if (!displayName.trim()) {
+        displayName = payload.user_metadata?.username || 
+                     payload.email?.split('@')[0] || 
+                     '使用者';
       }
-      
-      return {
-        display_name: displayName,
-        username: payload.user_metadata?.username || '',
-        email_verified: payload.user_metadata?.email_verified || false,
-        role: payload.role || 'authenticated',
-        session_id: payload.session_id || '',
-        exp: payload.exp,
-        iat: payload.iat
-      };
-    } catch (error) {
-      console.error('解析 JWT token 失敗:', error);
-      return {};
     }
+    
+    return {
+      display_name: displayName,
+      username: payload.user_metadata?.username || '',
+      email_verified: payload.user_metadata?.email_verified || false,
+      role: payload.role || 'authenticated',
+      session_id: payload.session_id || '',
+      exp: payload.exp,
+      iat: payload.iat
+    };
   };
 
   // 登出函數

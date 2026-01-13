@@ -128,7 +128,8 @@ async def search_documents(request: SearchRequest):
         logger.info("=" * 50)
         logger.info(f"搜尋請求: collection={request.collection}, query='{request.query_text}', mode={request.mode}")
         logger.info("=" * 50)
-        summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval", "case_fact_summary"]
+        # TODO: 增加欄位
+        summary_fields = ["defendants_role", "A_fact", "B_claim", "C_court_finding", "D_court_reason", "E_legal_eval", "case_fact_summary", "statement_inconsistency_with_previous", "justification_reason", "excuse_reason"]
         reconstructed_query = ""
         for summary_field in summary_fields:
             if summary_field in structured_filter and structured_filter[summary_field]:

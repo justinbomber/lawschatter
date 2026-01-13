@@ -1,11 +1,14 @@
 import axios from 'axios';
 import { validateTokenBeforeRequest, getValidToken } from '../utils/jwtValidator';
 
-const SUPABASE_URL = 'https://lawschatter.mooo.com';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
+// const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL; // 讀取完整的 URL
 
+// --- 修改點 1: Auth Base URL 指向官方標準路徑 ---
+const AUTH_BASE_URL = `${SUPABASE_URL}/auth/v1`;
 // 一律走同網域的反向代理前綴，對應 Nginx 設定
-const AUTH_BASE_URL = '/supabase-auth';
+// const AUTH_BASE_URL = '/supabase-auth';
 
 const supabaseAuthClient = axios.create({
   baseURL: AUTH_BASE_URL,
@@ -110,7 +113,9 @@ export const supabaseAuth = {
   }
 };
 
-const REST_BASE_URL = '/supabase-rest';
+// const REST_BASE_URL = '/supabase-rest';
+
+const REST_BASE_URL = `${SUPABASE_URL}/rest/v1`;
 
 export const supabaseRestClient = axios.create({
   baseURL: REST_BASE_URL,

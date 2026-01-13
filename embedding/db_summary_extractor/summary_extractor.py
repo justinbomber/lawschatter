@@ -7,6 +7,7 @@ from openai import OpenAI
 import logging
 import time
 import dotenv
+from config import FieldsConfig
 
 dotenv.load_dotenv()
 
@@ -98,17 +99,14 @@ def process_single_jid(jid, jdate):
     
     # 處理 defendants 陣列
     defendants = ai_summary.get("defendants", [])
+    # TODO: 增加欄位
     for defendant in defendants:
-        defendant_name = defendant.get("name", "未知")
+        defendant_name = defendant.get("name", FieldsConfig.DEFAULT_VALUE)
         
         # 為每個被告的每個欄位創建記錄
         defendant_fields = {
-            "role": defendant.get("role", "未知"),
-            "A_fact": defendant.get("A_fact", "未知"),
-            "B_claim": defendant.get("B_claim", "未知"),
-            "C_court_finding": defendant.get("C_court_finding", "未知"),
-            "D_court_reason": defendant.get("D_court_reason", "未知"),
-            "E_legal_eval": defendant.get("E_legal_eval", "未知")
+            field: defendant.get(field, FieldsConfig.DEFAULT_VALUE) 
+            for field in FieldsConfig.get_multivector_field_names()
         }
         
         for field_name, field_content in defendant_fields.items():

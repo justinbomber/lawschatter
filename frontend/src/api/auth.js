@@ -71,7 +71,7 @@ export const authAPI = {
         return {
           success: true,
           data: {
-            message: '註冊成功，請檢查您的電子郵件以驗證帳戶',
+            message: '註冊成功，請檢查您的電子郵件以驗證帳戶，若未收到驗證信，請檢查垃圾信箱。',
             user: response.user
           }
         };

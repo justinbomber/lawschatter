@@ -7,6 +7,7 @@ from ..infrastructure import (
     SupabaseJudgmentRepository,
     SupabaseMetadataRepository,
     OpenAIMetadataExtractor,
+    OpenAIClientFactory,
     GrokMetadataExtractor,
     FileSchemaProvider,
     AdjudicateJudgmentFilter,
@@ -39,9 +40,11 @@ class CLI:
             self.config.database.schema_name
         )
         
+        extractor_factory = None
+        
         if self.config.ai_provider == "grok":
             logger.info("使用 Grok AI 服務")
-            timeout = httpx.Timeout(600.0, connect=60.0)
+            timeout = httpx.Timeout(float(self.config.xai_service.timeout), connect=60.0)
             http_client = httpx.Client(timeout=timeout)
             
             grok_client = OpenAI(
@@ -54,42 +57,20 @@ class CLI:
             extractor = GrokMetadataExtractor(
                 grok_client,
                 self.config.xai_service.model,
-                timeout=600,
+                timeout=self.config.xai_service.timeout,
                 max_wait_time=300,
                 max_retries=5
             )
         else:
             logger.info("使用 OpenAI 服務")
             
-            # 優化長上下文處理的連接設定
-            # - HTTP/2 支援提升多路復用效能
-            # - Keepalive 連接池避免頻繁重連
-            # - 30 秒 keepalive 防止長時間請求斷線
-            timeout = httpx.Timeout(600.0, connect=60.0)
-            limits = httpx.Limits(
-                max_keepalive_connections=20,
-                max_connections=50,
-                keepalive_expiry=30.0
-            )
-            http_client = httpx.Client(
-                timeout=timeout,
-                limits=limits,
-                http2=True
+            openai_factory = OpenAIClientFactory(
+                self.config.openai_service,
+                timeout=self.config.openai_service.timeout
             )
             
-            openai_client = OpenAI(
-                api_key=self.config.openai_service.api_key,
-                http_client=http_client,
-                max_retries=3
-            )
-            
-            extractor = OpenAIMetadataExtractor(
-                openai_client, 
-                self.config.openai_service.model,
-                timeout=600,
-                max_wait_time=300,
-                max_retries=3
-            )
+            extractor = openai_factory.create_extractor()
+            extractor_factory = openai_factory.create_extractor
         
         filter_service = AdjudicateJudgmentFilter()
         
@@ -105,6 +86,7 @@ class CLI:
             schema_provider=schema_provider,
             target_titles=self.config.process.target_titles,
             include_adjudicate=self.config.process.include_adjudicate,
+            extractor_factory=extractor_factory,
         )
 
         use_case_json = ExportJudgmentToJsonUseCase(
@@ -114,9 +96,10 @@ class CLI:
             output_dir=self.config.output_dir
         )
         
-        # total_processed = use_case.execute()
-        total_processed = use_case_json.execute(["TPHM,113,上訴,6418,20250617,1"])
+        total_processed = use_case.execute()
+        # total_processed = use_case_json.execute(["TPHM,113,上訴,6418,20250617,1"])
         # total_processed = use_case_json.execute(["MLDM,113,訴,549,20250526,1","TPHM,113,上訴,6418,20250617,1"])
+        # total_processed = use_case._process_judgment("TPHM,113,上訴,6418,20250617,1", "20250617")
         
         logger.info(f"執行完成，總共處理 {total_processed} 筆判決")
         return total_processed

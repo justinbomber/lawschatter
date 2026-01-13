@@ -1,15 +1,14 @@
 import json
 import logging
-import time
 from typing import Dict, Any, List, Union
 from openai import OpenAI
-from openai import APITimeoutError, APIConnectionError, APIError
 from ..domain import (
     SummaryExtractor, 
     JudgmentRecord, 
     SummaryExtractionResult,
     DefendantSummary,
 )
+from ..config import FieldsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +35,6 @@ class OpenAISummaryExtractor(SummaryExtractor):
         model: str = "gpt-5",
         reasoning_effort: str = "medium",
         timeout: int = 600,
-        max_wait_time: int = 300,
-        max_retries: int = 5,
         chunk_size: int = 7500,
         overlap_ratio: float = 0.25
     ):
@@ -45,10 +42,22 @@ class OpenAISummaryExtractor(SummaryExtractor):
         self.model = model
         self.reasoning_effort = reasoning_effort
         self.timeout = timeout
-        self.max_wait_time = max_wait_time
-        self.max_retries = max_retries
         self.chunk_size = chunk_size
         self.overlap_ratio = overlap_ratio
+        self.force_chunk_mode = False  # 強制切塊模式
+    
+    def set_client(self, client: OpenAI) -> None:
+        self.client = client
+    
+    def enable_force_chunk_mode(self) -> None:
+        """啟用強制切塊模式"""
+        self.force_chunk_mode = True
+        logger.info("已啟用強制切塊模式")
+    
+    def disable_force_chunk_mode(self) -> None:
+        """停用強制切塊模式"""
+        self.force_chunk_mode = False
+        logger.info("已停用強制切塊模式")
     
     def _split_text_into_chunks(self, text: str) -> List[str]:
         text_length = len(text)
@@ -131,96 +140,59 @@ class OpenAISummaryExtractor(SummaryExtractor):
                 f"當前判決片段（請以此為準）：\n{chunk_text}"
             )
         
-        attempt = 0
+        previous_result_str = json.dumps(previous_result, ensure_ascii=False)
+        total_length = len(chunk_text) + len(previous_result_str)
+        logger.info(
+            f"處理 chunk {chunk_index + 1}/{total_chunks}: {jid}, "
+            f"字數: {total_length}"
+        )
         
-        while attempt < self.max_retries:
-            attempt += 1
-            previous_result_str = json.dumps(previous_result, ensure_ascii=False)
-            
-            try:
-                if attempt == 1:
-                    total_length = len(chunk_text) + len(previous_result_str)
-                    logger.info(
-                        f"處理 chunk {chunk_index + 1}/{total_chunks}: {jid}, "
-                        f"字數: {total_length}"
-                    )
-                else:
-                    logger.warning(f"重試處理 chunk {chunk_index + 1}/{total_chunks} (第 {attempt}/{self.max_retries} 次): {jid}")
-                
-                resp = self.client.chat.completions.create(
-                    model=self.model,
-                    reasoning_effort=self.reasoning_effort,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    response_format={
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": "judgment_summary",
-                            "strict": True,
-                            "schema": schema["json_schema"]
-                        }
-                    },
-                    timeout=self.timeout
-                )
-                
-                content = resp.choices[0].message.content
-                
-                if isinstance(content, bytes):
-                    content = content.decode('utf-8', errors='replace')
-                
-                ai_summary = json.loads(content, strict=False)
-                ai_summary = fix_encoding(ai_summary)
-                
-                if attempt > 1:
-                    logger.info(f"成功處理 chunk {chunk_index + 1}/{total_chunks} (經過 {attempt} 次嘗試): {jid}")
-                else:
-                    logger.info(f"成功處理 chunk {chunk_index + 1}/{total_chunks}: {jid}")
-                
-                return ai_summary
-                
-            except (APITimeoutError, APIConnectionError) as e:
-                if attempt >= self.max_retries:
-                    logger.error(
-                        f"達到最大重試次數 {self.max_retries} 次，chunk {chunk_index + 1}/{total_chunks} 處理失敗: {jid}. "
-                        f"錯誤: {str(e)}"
-                    )
-                    raise Exception(
-                        f"達到最大重試次數 {self.max_retries} 次，chunk {chunk_index + 1}/{total_chunks} 處理失敗: {jid}. "
-                        f"最後錯誤: {str(e)}"
-                    )
-                
-                wait_time = min((attempt * 5), self.max_wait_time)
-                logger.warning(
-                    f"API 請求超時或連接錯誤 (chunk {chunk_index + 1}/{total_chunks} 第 {attempt}/{self.max_retries} 次): {jid}. "
-                    f"錯誤: {str(e)}. {wait_time} 秒後重試..."
-                )
-                time.sleep(wait_time)
-                    
-            except APIError as e:
-                logger.error(f"API 錯誤 (chunk {chunk_index + 1}/{total_chunks}): {jid}. 錯誤: {str(e)}")
-                raise
-                
-            except Exception as e:
-                logger.error(f"未預期的錯誤 (chunk {chunk_index + 1}/{total_chunks}): {jid}. 錯誤: {str(e)}")
-                raise
+        resp = self.client.chat.completions.create(
+            model=self.model,
+            reasoning_effort=self.reasoning_effort,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "judgment_summary",
+                    "strict": True,
+                    "schema": schema["json_schema"]
+                }
+            },
+            timeout=self.timeout
+        )
         
-        logger.error(f"達到最大重試次數，chunk {chunk_index + 1}/{total_chunks} 處理失敗: {jid}")
-        raise Exception(f"達到最大重試次數，chunk {chunk_index + 1}/{total_chunks} 處理失敗: {jid}")
+        content = resp.choices[0].message.content
+        
+        if isinstance(content, bytes):
+            content = content.decode('utf-8', errors='replace')
+        
+        ai_summary = json.loads(content, strict=False)
+        ai_summary = fix_encoding(ai_summary)
+        
+        logger.info(f"成功處理 chunk {chunk_index + 1}/{total_chunks}: {jid}")
+        
+        return ai_summary
     
     def extract(
         self, 
         judgment: JudgmentRecord, 
         schema: Dict[str, Any]
     ) -> SummaryExtractionResult:
-        logger.info(f"使用 OpenAI 提取 summary: {judgment.jid}")
+        logger.info(f"使用 {self.model} 提取 summary: {judgment.jid}")
         
         text_length = len(judgment.jfull)
         logger.info(f"判決文本字數: {text_length}")
         
-        if text_length > self.chunk_size:
-            logger.info(f"文本長度 {text_length} 超過 {self.chunk_size}，啟動切塊處理")
+        # 當字數超過 45000 或啟用強制切塊模式時，使用切塊處理
+        if text_length > 45000 or self.force_chunk_mode:
+            if self.force_chunk_mode:
+                logger.info(f"強制切塊模式已啟用，文本長度 {text_length}，啟動切塊處理")
+            else:
+                logger.info(f"文本長度 {text_length} 超過 45000，啟動切塊處理")
             chunks = self._split_text_into_chunks(judgment.jfull)
             
             previous_result = {}
@@ -241,13 +213,8 @@ class OpenAISummaryExtractor(SummaryExtractor):
             defendants = []
             for defendant_data in previous_result.get("defendants", []):
                 defendant = DefendantSummary(
-                    name=defendant_data.get("name", "未知"),
-                    role=defendant_data.get("role", "未知"),
-                    A_fact=defendant_data.get("A_fact", "未知"),
-                    B_claim=defendant_data.get("B_claim", "未知"),
-                    C_court_finding=defendant_data.get("C_court_finding", "未知"),
-                    D_court_reason=defendant_data.get("D_court_reason", "未知"),
-                    E_legal_eval=defendant_data.get("E_legal_eval", "未知"),
+                    **{field: defendant_data.get(field, FieldsConfig.DEFAULT_VALUE) 
+                       for field in FieldsConfig.get_defendant_summary_fields()}
                 )
                 defendants.append(defendant)
             
@@ -255,6 +222,7 @@ class OpenAISummaryExtractor(SummaryExtractor):
                 case_fact_summary=previous_result.get("case_fact_summary", ""),
                 defendants=defendants,
                 case_highlights=previous_result.get("case_highlights", []),
+                conduct_count_analysis=previous_result.get("conduct_count_analysis", FieldsConfig.DEFAULT_VALUE),
             )
         
         system_prompt = (
@@ -268,94 +236,49 @@ class OpenAISummaryExtractor(SummaryExtractor):
         )
         user_prompt = judgment.jfull
         
-        attempt = 0
+        logger.info(f"嘗試提取 summary: {judgment.jid}")
         
-        while attempt < self.max_retries:
-            attempt += 1
-            try:
-                if attempt == 1:
-                    logger.info(f"嘗試提取 summary: {judgment.jid}")
-                else:
-                    logger.warning(f"重試提取 summary (第 {attempt}/{self.max_retries} 次): {judgment.jid}")
-                
-                resp = self.client.chat.completions.create(
-                    model=self.model,
-                    reasoning_effort=self.reasoning_effort,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    response_format={
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": "judgment_summary",
-                            "strict": True,
-                            "schema": schema["json_schema"]
-                        }
-                    },
-                    timeout=self.timeout
-                )
-                
-                logger.info(f"AI summary 回應: {resp.choices[0].message.content}")
-                
-                content = resp.choices[0].message.content
-                
-                if isinstance(content, bytes):
-                    content = content.decode('utf-8', errors='replace')
-                
-                ai_summary = json.loads(content, strict=False)
-                ai_summary = fix_encoding(ai_summary)
-                
-                if attempt > 1:
-                    logger.info(f"成功提取 summary (經過 {attempt} 次嘗試): {judgment.jid}")
-                else:
-                    logger.info(f"成功提取 summary: {judgment.jid}")
-                
-                defendants = []
-                for defendant_data in ai_summary.get("defendants", []):
-                    defendant = DefendantSummary(
-                        name=defendant_data.get("name", "未知"),
-                        role=defendant_data.get("role", "未知"),
-                        A_fact=defendant_data.get("A_fact", "未知"),
-                        B_claim=defendant_data.get("B_claim", "未知"),
-                        C_court_finding=defendant_data.get("C_court_finding", "未知"),
-                        D_court_reason=defendant_data.get("D_court_reason", "未知"),
-                        E_legal_eval=defendant_data.get("E_legal_eval", "未知"),
-                    )
-                    defendants.append(defendant)
-                
-                return SummaryExtractionResult(
-                    case_fact_summary=ai_summary.get("case_fact_summary", ""),
-                    defendants=defendants,
-                    case_highlights=ai_summary.get("case_highlights", []),
-                )
-                
-            except (APITimeoutError, APIConnectionError) as e:
-                if attempt >= self.max_retries:
-                    logger.error(
-                        f"達到最大重試次數 {self.max_retries} 次，API 請求仍然失敗: {judgment.jid}. "
-                        f"錯誤: {str(e)}"
-                    )
-                    raise Exception(
-                        f"達到最大重試次數 {self.max_retries} 次，需要重新查詢資料: {judgment.jid}. "
-                        f"最後錯誤: {str(e)}"
-                    )
-                
-                wait_time = min((attempt * 5), self.max_wait_time)
-                logger.warning(
-                    f"API 請求超時或連接錯誤 (第 {attempt}/{self.max_retries} 次): {judgment.jid}. "
-                    f"錯誤: {str(e)}. {wait_time} 秒後重試..."
-                )
-                time.sleep(wait_time)
-                    
-            except APIError as e:
-                logger.error(f"API 錯誤: {judgment.jid}. 錯誤: {str(e)}")
-                raise
-                
-            except Exception as e:
-                logger.error(f"未預期的錯誤: {judgment.jid}. 錯誤: {str(e)}")
-                raise
+        resp = self.client.chat.completions.create(
+            model=self.model,
+            reasoning_effort=self.reasoning_effort,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "judgment_summary",
+                    "strict": True,
+                    "schema": schema["json_schema"]
+                }
+            },
+            timeout=self.timeout
+        )
         
-        logger.error(f"達到最大重試次數 {self.max_retries} 次，提取失敗: {judgment.jid}")
-        raise Exception(f"達到最大重試次數 {self.max_retries} 次，需要重新查詢資料: {judgment.jid}")
-
+        logger.info(f"AI summary 回應: {resp.choices[0].message.content}")
+        
+        content = resp.choices[0].message.content
+        
+        if isinstance(content, bytes):
+            content = content.decode('utf-8', errors='replace')
+        
+        ai_summary = json.loads(content, strict=False)
+        ai_summary = fix_encoding(ai_summary)
+        
+        logger.info(f"成功提取 summary: {judgment.jid}")
+        
+        defendants = []
+        for defendant_data in ai_summary.get("defendants", []):
+            defendant = DefendantSummary(
+                **{field: defendant_data.get(field, FieldsConfig.DEFAULT_VALUE) 
+                   for field in FieldsConfig.get_defendant_summary_fields()}
+            )
+            defendants.append(defendant)
+        
+        return SummaryExtractionResult(
+            case_fact_summary=ai_summary.get("case_fact_summary", ""),
+            defendants=defendants,
+            case_highlights=ai_summary.get("case_highlights", []),
+            conduct_count_analysis=ai_summary.get("conduct_count_analysis", FieldsConfig.DEFAULT_VALUE),
+        )

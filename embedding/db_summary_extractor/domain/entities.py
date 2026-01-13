@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import List, Dict, Any
 
 
@@ -9,6 +9,7 @@ class JudgmentRecord:
     jfull: str
 
 
+# TODO: 增加欄位 (需與 config.FieldsConfig.BASE_FIELDS 保持同步)
 @dataclass
 class DefendantSummary:
     name: str
@@ -18,6 +19,13 @@ class DefendantSummary:
     C_court_finding: str
     D_court_reason: str
     E_legal_eval: str
+    statement_inconsistency_with_previous: str
+    justification_reason: str
+    excuse_reason: str
+    
+    @classmethod
+    def get_field_names(cls) -> List[str]:
+        return [f.name for f in fields(cls)]
 
 
 @dataclass
@@ -25,6 +33,7 @@ class SummaryExtractionResult:
     case_fact_summary: str
     defendants: List[DefendantSummary]
     case_highlights: List[str]
+    conduct_count_analysis: str
 
 
 @dataclass

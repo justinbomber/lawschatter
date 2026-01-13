@@ -1,6 +1,41 @@
 import os
 from dataclasses import dataclass
+from typing import List
 from dotenv import load_dotenv
+
+
+# TODO: 增加欄位
+class FieldsConfig:
+    """欄位配置 - 集中管理所有需要動態增加的欄位"""
+    
+    BASE_FIELDS: List[str] = [
+        "role",
+        "A_fact",
+        "B_claim",
+        "C_court_finding",
+        "D_court_reason",
+        "E_legal_eval",
+        "statement_inconsistency_with_previous",
+        "justification_reason",
+        "excuse_reason",
+        "conduct_count_analysis"
+    ]
+    
+    DEFAULT_VALUE: str = "未知"
+    
+    @classmethod
+    def get_multivector_field_names(cls) -> List[str]:
+        return cls.BASE_FIELDS.copy()
+    
+    @classmethod
+    def get_summary_fields(cls) -> List[str]:
+        return ["defendants_role" if f == "role" else f for f in cls.BASE_FIELDS]
+    
+    @classmethod
+    def get_summary_fields_with_case_fact(cls) -> List[str]:
+        fields = cls.get_summary_fields()
+        fields.insert(fields.index("E_legal_eval") + 1, "case_fact_summary")
+        return fields
 
 
 @dataclass

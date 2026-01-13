@@ -19,13 +19,10 @@ class RAGClient(IRAGClient):
         url = f"{self.base_url}/search"
         
         payload = {
-            "collection": request.collection,
             "query_text": request.query_text,
             "conversation_id": request.conversation_id,
-            "mode": request.mode,
-            "limit": request.limit,
-            "score_threshold": request.score_threshold,
-            "streaming": False
+            "streaming": False,
+            "search_mode": request.search_mode
         }
         
         headers = {
@@ -45,13 +42,10 @@ class RAGClient(IRAGClient):
         url = f"{self.base_url}/search"
         
         payload = {
-            "collection": request.collection,
             "query_text": request.query_text,
             "conversation_id": request.conversation_id,
-            "mode": request.mode,
-            "limit": request.limit,
-            "score_threshold": request.score_threshold,
-            "streaming": True
+            "streaming": True,
+            "search_mode": request.search_mode
         }
         
         headers = {

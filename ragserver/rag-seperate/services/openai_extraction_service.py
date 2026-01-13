@@ -15,6 +15,7 @@ class OpenAIExtractionService(ILLMExtractionService):
         self.settings = settings
     
     async def extract_structured_filter(self, user_question: str, history_messages: List[Message] = None) -> Dict[str, Any]:
+        # TODO: 增加欄位 (需與 config.settings.FieldsConfig.BASE_FIELDS 保持同步)
         system_prompt = """
 你是法律判決查詢的過濾條件抽取助理。根據使用者問題和歷史對話，抽取出過濾條件並輸出 JSON。
 
@@ -34,8 +35,8 @@ class OpenAIExtractionService(ILLMExtractionService):
 理解為：車手角色的量刑判決
 
 輸出結構：
-- 可包含：confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval。
-- negated_fields：否定欄位列表。confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval不得加入否定列表欄位。
+- 可包含：confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval, statement_inconsistency_with_previous, justification_reason, excuse_reason。
+- negated_fields：否定欄位列表。confession_status, has_probation, defendants_role, A_fact, B_claim, C_court_finding, D_court_reason, E_legal_eval, statement_inconsistency_with_previous, justification_reason, excuse_reason不得加入否定列表欄位。
 
 以下為可直接給語言模型使用的正規化提示，已加入「動作／手法」行話的改寫規則與範例。
 
@@ -135,11 +136,11 @@ class OpenAIExtractionService(ILLMExtractionService):
         messages.append({"role": "user", "content": user_question})
         
         response = await self.client.responses.parse(
-            model="gpt-5",
+            model=self.settings.openai.model,
             input=messages,
             text_format=Filter,
             timeout=120,
-            reasoning={"effort": "high"}
+            reasoning={"effort": "medium"}
         )
         
         result = response.output_parsed

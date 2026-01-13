@@ -74,3 +74,10 @@ class EmbeddingDocument:
             document_id=summary.point_id
         )
 
+
+@dataclass
+class JudgmentMultiVectorSpec:
+    jid: str
+    judgment_metadata: Dict[str, Any]
+    vectors_by_summary_type: Dict[str, List[EmbeddingDocument]]
+

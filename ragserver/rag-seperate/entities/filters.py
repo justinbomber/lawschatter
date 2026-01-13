@@ -2,11 +2,27 @@ from typing import Optional, Literal, List
 from pydantic import BaseModel, Field
 
 
+class ActCountIssue(BaseModel):
+    article: Optional[str] = Field(default=None, description="行為數爭點所涉及法條")
+    act_classification: Optional[Literal["單一行為", "接續犯", "集合犯", "吸收犯", "結合犯", "其他", "實質競合"]] = Field(default=None, description="犯罪行為數性質或是行為分類")
+    classification_reason: Optional[str] = Field(default=None, description="上述分類理由")
+    multiple_acts_recognized: Optional[bool] = Field(default=None, description="判決認定為數個行為")
+    has_similar_repeated_acts: Optional[bool] = Field(default=None, description="本件是否有相類似的重複行為")
+    involves_multiple_victims: Optional[bool] = Field(default=None, description="是否涉及多名被害人")
+
+
+class ConcurrentOffenseArticle(BaseModel):
+    article: Optional[str] = Field(default=None, description="爭點所涉犯的法條")
+    competition_resolution: Optional[Literal["想像競合", "法條競合", "吸收", "其他"]] = Field(default=None, description="判決處理法條競合的方法")
+    final_conviction_article: Optional[str] = Field(default=None, description="最終成立的法條罪名")
+
+
 class Defendant(BaseModel):
     defendant_name: Optional[str] = Field(default=None, description="被告姓名")
     has_defense_attorney: Optional[bool] = Field(default=None, description="被告是否有選任辯護人")
     defense_attorney_name: Optional[str] = Field(default=None, description="辯護人名稱（若 has_defense_attorney 為 true 時填寫，否則填空字串）")
-    indictment_changed: Optional[bool] = Field(default=None, description="是否變更起訴法條（若同一條文但項次不同，仍視為變更）")
+    prosecution_articles: Optional[List[str]] = Field(default=None, description="本件遭起訴之法條（有幾條填幾條）")
+    indictment_changed: Optional[bool] = Field(default=None, description="檢察官是否變更起訴法條（若同一條文但項次不同，仍視為變更）")
     original_indictment_articles: Optional[List[str]] = Field(default=None, description="原本起訴法條（若 indictment_changed 為 true 時填寫，有幾條填幾條）")
     changed_indictment_articles: Optional[List[str]] = Field(default=None, description="變更起訴法條（若 indictment_changed 為 true 時填寫，有幾條填幾條）")
     has_new_old_law_issue: Optional[bool] = Field(default=None, description="本件是否有新舊法適用的問題")
@@ -19,6 +35,8 @@ class Defendant(BaseModel):
     is_conviction: Optional[bool] = Field(default=None, description="本件是否為有罪判決")
     crime_list: Optional[List[str]] = Field(default=None, description="本次罪名清單（若 is_conviction 為 true 時填寫，例如：「三人以上共同詐欺取財罪」、「洗錢未遂罪」，關鍵字是 XXX 罪）")
     violated_law_articles: Optional[List[str]] = Field(default=None, description="所違反的法律條文（若 is_conviction 為 true 時填寫，列出具體法條與條次，關鍵字 XXX 條 XXX 項）")
+    is_conviction_same_as_prosecution: Optional[bool] = Field(default=None, description="本件判決法院認定有罪適用法條的部分，是否與遭起訴的部分完全相同（若 is_conviction 為 true 時填寫）")
+    conviction_prosecution_difference_articles: Optional[List[str]] = Field(default=None, description="若判決法條與起訴法條不同，請僅列出差異的法條名稱與條號（若 is_conviction_same_as_prosecution 為 false 時填寫）")
     is_fixed_term_imprisonment: Optional[bool] = Field(default=None, description="本件是否為有期徒刑")
     fixed_term_years: Optional[int] = Field(default=None, description="有期徒刑年數（若 is_fixed_term_imprisonment 為 true 時填寫，否則填 0）")
     fixed_term_months: Optional[int] = Field(default=None, description="有期徒刑月數（若 is_fixed_term_imprisonment 為 true 時填寫，否則填 0）")
@@ -34,6 +52,7 @@ class Defendant(BaseModel):
     has_mitigation_articles: Optional[bool] = Field(default=None, description="本件是否有適用減刑的條文")
     mitigation_articles: Optional[str] = Field(default=None, description="適用減刑的條文為（若 has_mitigation_articles 為 true 時填寫）")
     has_settlement: Optional[bool] = Field(default=None, description="本件是否與被害人或告訴人和解")
+    is_full_settlement: Optional[bool] = Field(default=None, description="是否與全部被害人或告訴人和解（若 has_settlement 為 true 時填寫）")
     settlement_amount: Optional[int] = Field(default=None, description="和解之總金額（新臺幣，若 has_settlement 為 true 時填寫，否則填 0）")
     is_settlement_fulfilled: Optional[bool] = Field(default=None, description="法院是否認定和解已經履行（若 has_settlement 為 true 時填寫）")
     is_settlement_installment: Optional[bool] = Field(default=None, description="本件和解是否分期（若 has_settlement 為 true 時填寫）")
@@ -44,7 +63,7 @@ class Defendant(BaseModel):
     seized_items: Optional[List[str]] = Field(default=None, description="本件遭扣押物品（若 has_seized_items 為 true 時填寫）")
     has_confiscated_items: Optional[bool] = Field(default=None, description="本件是否遭沒收物品")
     confiscated_items: Optional[List[str]] = Field(default=None, description="本件遭沒收物品（若 has_confiscated_items 為 true 時填寫）")
-    is_continuous_offense: Optional[Literal["是", "否", "未提及"]] = Field(default=None, description="本件被告是否屬於接續犯")
+    has_surrendered_proceeds: Optional[bool] = Field(default=None, description="本件是否繳交犯罪所得")
     is_first_instance: Optional[bool] = Field(default=None, description="是否為一審判決")
     is_second_instance: Optional[bool] = Field(default=None, description="是否為二審判決")
     is_third_instance: Optional[bool] = Field(default=None, description="是否為三審判決")
@@ -58,6 +77,16 @@ class Defendant(BaseModel):
     current_instance_confession_status: Optional[Literal["完全認罪", "完全否認", "部分", "不適用"]] = Field(default=None, description="本件（上訴案件）是否有認罪（若 has_previous_instance 為 true 時填寫）")
     has_inconsistent_statements_with_previous: Optional[bool] = Field(default=None, description="是否有與原審答辯或主要陳述內容不一致之情形（若 has_previous_instance 為 true 時填寫）")
     statement_difference_description: Optional[str] = Field(default=None, description="若有，請以一句話描述前後陳述的主要差異（若 has_inconsistent_statements_with_previous 為 true 時填寫）")
+    has_justification_issue: Optional[bool] = Field(default=None, description="本件是否有阻卻違法的爭點")
+    has_justification_applied: Optional[bool] = Field(default=None, description="本件是否有阻卻違法的適用（若 has_justification_issue 為 true 時填寫）")
+    has_excuse_issue: Optional[bool] = Field(default=None, description="本件是否有阻卻罪責的爭點")
+    has_excuse_applied: Optional[bool] = Field(default=None, description="本件是否有阻卻罪責的適用（若 has_excuse_issue 為 true 時填寫）")
+    has_attempt_issue: Optional[bool] = Field(default=None, description="本件是否有未遂的爭點")
+    attempt_related_articles: Optional[List[str]] = Field(default=None, description="本件涉及未遂行為的法條（若 has_attempt_issue 為 true 時填寫）")
+    has_act_count_issue: Optional[bool] = Field(default=None, description="本件是否有行為數的爭點")
+    act_count_issues: Optional[List[ActCountIssue]] = Field(default=None, description="行為數爭點列表（若 has_act_count_issue 為 true 時填寫，按法條列舉）")
+    has_concurrent_offense_issue: Optional[bool] = Field(default=None, description="本件有沒有「一行為同時違反數個法條」的爭點")
+    concurrent_offense_articles: Optional[List[ConcurrentOffenseArticle]] = Field(default=None, description="法條競合爭點列表（若 has_concurrent_offense_issue 為 true 時填寫）")
 
 
 class CaseMetadata(BaseModel):
@@ -72,6 +101,7 @@ class CaseMetadata(BaseModel):
     ]] = Field(default=None, description="案件標題類型")
 
 
+# TODO: 增加欄位 (需與 config.settings.FieldsConfig.BASE_FIELDS 保持同步)
 class Filter(BaseModel):
     jid: Optional[str] = Field(default=None, description="判決書ID（例：TPHM,113,上訴,6418,20250617,1）")
     # jid_full: Optional[str] = Field(default=None, description="完整判決書名稱，（例：臺灣高等法院刑事判決113年度上訴字第6418號）必填")
@@ -87,7 +117,15 @@ class Filter(BaseModel):
     C_court_finding: Optional[str] = Field(default=None, description="法院認定哪些事實成立，採信哪些證據或供述。敘述法院最終認為哪些事實成立、採信哪些證據、排除哪些辯詞。可含「法院認為」「法院採信」「法院不採信」等語。【必須使用完整語句描述，字數需達30字以上，不可只填關鍵詞】。若問句與此項無關直接留空。範例：❌錯誤「法院採信證人」；✓正確「法院認定被告確有參與詐欺行為，採信證人於審理中之證述，不採信被告所辯稱不知情之抗辯」")
     D_court_reason: Optional[str] = Field(default=None, description="法院推論、採信理由、法條適用與量刑考量。敘述法院的推論過程、採信邏輯、法律適用與量刑考量。可包含法律詞彙、判斷語氣與條文引用。【必須使用完整語句描述，字數需達30字以上，不可只填關鍵詞】。若問句與此項無關直接留空。範例：❌錯誤「證據充分」；✓正確「法院審酌被告犯後態度、被害人所受損害、被告於犯罪中所處地位及分工等一切情狀，認應量處有期徒刑」")
     E_legal_eval: Optional[str] = Field(default=None, description="法院最終法律評價、罪名與競合處理結果。簡述法院最終的法律結論，包括罪名、競合與量刑方向。可使用法律用語（如「共同正犯」「想像競合」「從一重詐欺罪處斷」等）。【必須使用完整語句描述，字數需達30字以上，不可只填關鍵詞】。若問句與此項無關直接留空。範例：❌錯誤「詐欺罪」；✓正確「被告所為係犯刑法第339條第1項詐欺取財罪，與他人間有犯意聯絡及行為分擔，為共同正犯」")
+    statement_inconsistency_with_previous: Optional[str] = Field(default=None, description="本件與原審（前審）答辯或主要陳述內容不一致之情形。【若有，請以30字內呈現不一致的地方；若沒有或與問句無關，請留空】。")
+    justification_reason: Optional[str] = Field(default=None, description="本件具有阻卻違法的理由。【若有，請以30字內呈現阻卻違法的理由；若沒有或與問句無關，請留空】。")
+    excuse_reason: Optional[str] = Field(default=None, description="本件具有阻卻罪責的理由。【若有，請以30字內呈現阻卻罪責的理由；若沒有或與問句無關，請留空】。")
+    case_fact_summary: Optional[str] = Field(default=None, description="全案500字內事實概要，無法律評價。提供整體可閱讀的案件輪廓，知悉案件中的人事時地物。描述每個行為人的角色、主要行為流程、具體事實、整體金流脈絡。【必須使用完整語句描述，字數需達30字以上，不可只填關鍵詞】。若問句與此項無關直接留空。")
+    case_highlights: Optional[str] = Field(default=None, description="案件特殊點，呈現本案中最具代表性、特殊性或分析價值的語意特徵。【必須使用完整語句描述，字數需達20字以上，不可只填關鍵詞】。若問句與此項無關直接留空。")
+    conduct_count_analysis: Optional[str] = Field(default=None, description="行為爭點敘述：本件在行為個數的爭點中，列舉每個法條得出犯罪行為數量是多少的理由。格式為編號列表，如「1.法條a:理由」「2.法條b:理由」，逐一說明法院如何認定各罪名的行為個數及其判斷依據。若判決未涉及行為個數爭點，填寫「未涉及行為個數爭點」。【必須使用完整語句描述，字數需達30字以上，不可只填關鍵詞】。若問句與此項無關直接留空。")
     negated_fields: Optional[List[str]] = Field(default=None, description="需要否定的欄位列表。在qdrant的filter中會被設為'must_not'的欄位有哪些，其他的metadata中已經有否定的意味在，不要重複填入。如：'defendants.has_defense_attorney'、'case_metadata.first_instance'、'defendants.confession_status' 等。")
     limit: Optional[int] = Field(default=5, description="返回結果數量上限（必填，根據問題複雜度決定，範圍 1-20，默認3）")
+    hard_condition_fields: Optional[List[str]] = Field(default=None, description="強條件欄位清單：這些欄位代表用戶問句中的核心必要條件，必須精確匹配。通常包含：C_court_finding（法院認定）、E_legal_eval（法律評價）、defendants.is_conviction（有罪判決）、defendants.crime_list（罪名）等明確法律判斷相關欄位。範例：若用戶問「法院認定有罪的詐欺案件」，則 hard_condition_fields 應填 ['C_court_finding', 'E_legal_eval']。若問句沒有明確必要條件則留空。")
+    soft_condition_fields: Optional[List[str]] = Field(default=None, description="弱條件欄位清單：這些欄位代表用戶問句中的輔助參考條件，用於提升相關性但非絕對必要。通常包含：A_fact（事實經過）、B_claim（被告主張）、defendants_role（被告角色）、case_highlights（案件重點）等描述性內容欄位。範例：若用戶問「提供帳戶給詐欺集團的案件」，則 soft_condition_fields 應填 ['A_fact', 'defendants_role']。若問句只有必要條件則留空。")
     # case_fact_summary: Optional[str] = Field(default=None, description="無法律評價。提供整體可閱讀的案件輪廓，描述被害人、主要行為流程、整體案件脈絡。若問句與此項無關直接留空。")
 

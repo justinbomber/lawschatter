@@ -8,7 +8,7 @@ from config.settings import Settings
 from infrastructure.rag_client import RAGClient
 from infrastructure.openai_llm_provider import OpenAILLMProvider
 from infrastructure.grok_llm_provider import GrokLLMProvider
-from infrastructure.supabase_repository import SupabaseConversationRepository
+from infrastructure.supabase_repository import SupabaseConversationRepository, SupabaseJudgmentRepository
 from services.chat_service import ChatService
 from controllers.chat_controller import ChatController
 from controllers.api_router import create_router
@@ -37,11 +37,13 @@ async def lifespan(app: FastAPI):
     llm_provider = GrokLLMProvider(settings)  # 取消註解以使用 Grok
     
     conversation_repository = SupabaseConversationRepository(settings)
+    judgment_repository = SupabaseJudgmentRepository(settings)
     
     chat_service = ChatService(
         rag_client=rag_client,
         llm_provider=llm_provider,
         conversation_repository=conversation_repository,
+        judgment_repository=judgment_repository,
         settings=settings
     )
     

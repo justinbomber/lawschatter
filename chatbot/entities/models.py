@@ -15,13 +15,10 @@ class ChatRequest(BaseModel):
 
 
 class RAGSearchRequest(BaseModel):
-    collection: str
     query_text: str
-    conversation_id: Optional[str]
-    mode: str
-    limit: int
-    score_threshold: float
+    conversation_id: Optional[str] = None
     streaming: bool = False
+    search_mode: str = "rrf"
 
 
 class RAGSearchResult(BaseModel):

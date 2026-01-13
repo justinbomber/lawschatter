@@ -2,7 +2,8 @@ import logging
 import signal
 import sys
 import time
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Callable
+from openai import APITimeoutError, APIConnectionError
 from ..domain import (
     JudgmentRepository,
     MetadataRepository,
@@ -28,6 +29,7 @@ class ExtractSummaryUseCase:
         decomposer: SummaryDecomposer,
         hash_generator: HashGenerator,
         sleep_interval: int = 60,
+        extractor_factory: Optional[Callable[[], SummaryExtractor]] = None,
     ):
         self.judgment_repo = judgment_repo
         self.metadata_repo = metadata_repo
@@ -37,6 +39,7 @@ class ExtractSummaryUseCase:
         self.decomposer = decomposer
         self.hash_generator = hash_generator
         self.sleep_interval = sleep_interval
+        self.extractor_factory = extractor_factory
         self.current_lock_point_id: Optional[str] = None
         self._setup_signal_handlers()
     
@@ -78,6 +81,11 @@ class ExtractSummaryUseCase:
         result = self.summary_repo.get_unprocessed_jids()
         return result
     
+    def _rebuild_extractor(self) -> None:
+        if self.extractor_factory:
+            logger.info("重建 extractor 和 OpenAI client")
+            self.extractor = self.extractor_factory()
+    
     def _process_judgment(self, jid: str, jdate: str) -> bool:
         logger.info(f"處理判決: {jid}")
         
@@ -88,22 +96,19 @@ class ExtractSummaryUseCase:
         lock_point_id = self.hash_generator.generate(jid)
         self.current_lock_point_id = lock_point_id
         lock_inserted = False
-        
-        attempt = 0
+        retry_count = 0
+        max_retries_before_chunk = 3
+        force_chunk_enabled = False
         
         while True:
-            attempt += 1
+            if not lock_inserted:
+                self.summary_repo.insert_lock_record(jid, jdate, lock_point_id)
+                lock_inserted = True
+            
+            judgment = self.judgment_repo.get_judgment(jid)
+            schema = self.schema_provider.get_schema()
+            
             try:
-                if attempt > 1:
-                    logger.info(f"重新查詢資料並嘗試處理判決 (第 {attempt} 次): {jid}")
-                
-                if attempt == 1:
-                    self.summary_repo.insert_lock_record(jid, jdate, lock_point_id)
-                    lock_inserted = True
-                
-                judgment = self.judgment_repo.get_judgment(jid)
-                
-                schema = self.schema_provider.get_schema()
                 extraction_result = self.extractor.extract(judgment, schema)
                 
                 summary_records = self.decomposer.decompose(
@@ -117,23 +122,48 @@ class ExtractSummaryUseCase:
                 
                 self.summary_repo.delete_lock_record(lock_point_id)
                 
+                # 成功後停用強制切塊模式
+                if force_chunk_enabled and hasattr(self.extractor, 'disable_force_chunk_mode'):
+                    self.extractor.disable_force_chunk_mode()
+                
                 logger.info(f"成功處理並插入 {len(summary_records)} 筆 summary: {jid}")
                 self.current_lock_point_id = None
                 return True
                 
-            except Exception as e:
-                error_msg = str(e)
+            except (APITimeoutError, APIConnectionError) as e:
+                retry_count += 1
                 
-                if "達到最大重試次數" in error_msg and "需要重新查詢資料" in error_msg:
+                if retry_count >= max_retries_before_chunk and not force_chunk_enabled:
+                    # 達到重試次數上限，啟用強制切塊模式
                     logger.warning(
-                        f"API 重試次數用盡，準備重新查詢資料並繼續重試: {jid}. "
-                        f"錯誤: {error_msg}"
+                        f"API 請求已失敗 {retry_count} 次: {jid}. "
+                        f"啟用強制切塊模式重試..."
                     )
-                    continue
+                    self._rebuild_extractor()
+                    # 重建後再啟用強制切塊模式
+                    if hasattr(self.extractor, 'enable_force_chunk_mode'):
+                        self.extractor.enable_force_chunk_mode()
+                        force_chunk_enabled = True
+                    # 重置重試計數，讓切塊模式有機會重試
+                    retry_count = 0
                 else:
-                    logger.error(f"處理判決時發生錯誤，跳過此判決: {jid}. 錯誤: {error_msg}")
-                    if lock_inserted:
-                        self.summary_repo.delete_lock_record(lock_point_id)
-                    self.current_lock_point_id = None
-                    return False
-
+                    logger.warning(
+                        f"API 請求超時或連接錯誤 (第 {retry_count} 次): {jid}. "
+                        f"錯誤: {str(e)}. 重建 client 後重試..."
+                    )
+                    self._rebuild_extractor()
+                    # 重建後保持強制切塊模式狀態
+                    if force_chunk_enabled and hasattr(self.extractor, 'enable_force_chunk_mode'):
+                        self.extractor.enable_force_chunk_mode()
+                
+                continue
+                
+            except Exception as e:
+                logger.error(f"處理判決時發生錯誤，跳過此判決: {jid}. 錯誤: {str(e)}")
+                if lock_inserted:
+                    self.summary_repo.delete_lock_record(lock_point_id)
+                # 發生錯誤時也停用強制切塊模式
+                if force_chunk_enabled and hasattr(self.extractor, 'disable_force_chunk_mode'):
+                    self.extractor.disable_force_chunk_mode()
+                self.current_lock_point_id = None
+                return False
