@@ -87,6 +87,10 @@ class Defendant(BaseModel):
     act_count_issues: Optional[List[ActCountIssue]] = Field(default=None, description="行為數爭點列表（若 has_act_count_issue 為 true 時填寫，按法條列舉）")
     has_concurrent_offense_issue: Optional[bool] = Field(default=None, description="本件有沒有「一行為同時違反數個法條」的爭點")
     concurrent_offense_articles: Optional[List[ConcurrentOffenseArticle]] = Field(default=None, description="法條競合爭點列表（若 has_concurrent_offense_issue 為 true 時填寫）")
+    has_criminal_record: Optional[bool] = Field(default=None, description="本件被告是否有犯罪前科？（注意：有前案紀錄表不代表一定有前科，即便是累犯，若未具體載明前科內容，仍須個案判斷）")
+    prior_criminal_record_details: Optional[str] = Field(default=None, description="被告所犯之前科內容。（若無具體內容則填「無從認定」）")
+    is_recidivism_same_type: Optional[bool] = Field(default=None, description="本件被告所犯之罪與前科紀錄是否為相關犯罪類型？")
+    has_specific_prior_record_mention: Optional[bool] = Field(default=None, description="本件判決是否有提到具體類型的前案紀錄？")
 
 
 class CaseMetadata(BaseModel):
