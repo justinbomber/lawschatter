@@ -412,43 +412,30 @@
               },
               "description": "法條競合爭點列表（若 has_concurrent_offense_issue 為 true 時填寫）"
             },
-            "has_a_prior_conviction": {
-              "type": "string",
-              "enum": [
-                "是",
-                "否",
-                "不明"
+            "has_criminal_record": {
+              "type": [
+                "boolean",
+                "null"
               ],
-              "description": "本件被告是否有犯罪前科？注意事項：有前案(科)紀錄表並非有前案(科)紀錄，僅代表法院有調取該資料，是否有前科需要判決有明確載明，否則應該填入「不明」"
+              "description": "本件被告是否有犯罪前科？【重要判斷原則】：(1) 判決僅載「有法院前案紀錄表附卷為憑」或「有前案紀錄表可查」等語句，僅代表法院有調取該資料，並非有前科；(2) 必須判決中有明確敘明被告過去曾犯某罪、曾受某刑之宣告等具體前科內容，才能認定為有前科（填 true）；(3) 若判決完全無提及前科資訊，或僅提及調取前案紀錄表但未說明內容，則應填 null（不明）；(4) 僅在判決明確記載「無前科」或「素行良好」等語時，才填 false。"
             },
-            "prior_conviction_info": {
-              "type": "object",
-              "description": "前科相關資訊（若 has_a_prior_conviction 為「是」或「不明」時填寫）",
-              "properties": {
-                "prior_conviction_details": {
-                  "type": "string",
-                  "description": "被告所犯之前科內容。（若判決未具體載明前科內容則填「不明」）"
-                },
-                "is_recidivism_same_type": {
-                  "type": "string",
-                  "enum": [
-                    "是",
-                    "否",
-                    "不明"
-                  ],
-                  "description": "本件被告所犯之罪與前科紀錄是否為相關犯罪類型？（若前科內容不明則填「不明」）"
-                },
-                "has_specific_prior_record_mention": {
-                  "type": "boolean",
-                  "description": "本件判決是否有提到具體類型的前案紀錄？（僅提「前案紀錄表」存在但未說明具體罪名或犯罪類型則填 false）"
-                }
-              },
-              "required": [
-                "prior_conviction_details",
-                "is_recidivism_same_type",
-                "has_specific_prior_record_mention"
+            "prior_criminal_record_details": {
+              "type": [
+                "string",
+                "null"
               ],
-              "additionalProperties": false
+              "description": "被告所犯之前科內容。【填寫原則】：(1) 若判決有明確敘明前科內容（如過去犯某罪、受某刑宣告），則填寫具體內容；(2) 若 has_criminal_record 為 null（不明）或判決僅提及「有前案紀錄表」但未說明具體內容，則此欄填 null；(3) 若 has_criminal_record 為 false（明確無前科），則填「無前科」。"
+            },
+            "is_recidivism_same_type": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "本件被告所犯之罪與前科紀錄是否為相關犯罪類型？【填寫原則】：(1) 必須在判決明確載明前科內容的情況下，才能判斷本件罪名與前科是否為相關類型；(2) 若 has_criminal_record 為 null（不明）或前科內容不明確，則此欄應填 null；(3) 相關犯罪類型指：同一罪章、同一法益、或犯罪手法相似之罪名。"
+            },
+            "has_specific_prior_record_mention": {
+              "type": "boolean",
+              "description": "本件判決是否有提到具體類型的前案紀錄？【判斷原則】：(1) 判決須有明確記載具體的前科罪名或犯罪類型（如「曾犯詐欺罪」「前因施用毒品遭判刑」等），才填 true；(2) 僅記載「有前案紀錄表附卷可稽」或類似語句，未說明具體罪名或類型者，應填 false；(3) 「具體類型」指有明確指出罪名、法條或犯罪類別。"
             }
           },
           "required": [
@@ -521,8 +508,10 @@
             "act_count_issues",
             "has_concurrent_offense_issue",
             "concurrent_offense_articles",
-            "has_a_prior_conviction",
-            "prior_conviction_info"
+            "has_criminal_record",
+            "prior_criminal_record_details",
+            "is_recidivism_same_type",
+            "has_specific_prior_record_mention"
           ],
           "additionalProperties": false
         }
