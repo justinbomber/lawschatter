@@ -412,21 +412,43 @@
               },
               "description": "法條競合爭點列表（若 has_concurrent_offense_issue 為 true 時填寫）"
             },
-            "has_criminal_record": {
-              "type": "boolean",
-              "description": "本件被告是否有犯罪前科？（注意：有前案紀錄表不代表一定有前科，即便是累犯，若未具體載明前科內容，仍須個案判斷）"
-            },
-            "prior_criminal_record_details": {
+            "has_a_prior_conviction": {
               "type": "string",
-              "description": "被告所犯之前科內容。（若無具體內容則填「無從認定」）"
+              "enum": [
+                "是",
+                "否",
+                "不明"
+              ],
+              "description": "本件被告是否有犯罪前科？注意事項：有前案(科)紀錄表並非有前案(科)紀錄，僅代表法院有調取該資料，是否有前科需要判決有明確載明，否則應該填入「不明」"
             },
-            "is_recidivism_same_type": {
-              "type": "boolean",
-              "description": "本件被告所犯之罪與前科紀錄是否為相關犯罪類型？"
-            },
-            "has_specific_prior_record_mention": {
-              "type": "boolean",
-              "description": "本件判決是否有提到具體類型的前案紀錄？"
+            "prior_conviction_info": {
+              "type": "object",
+              "description": "前科相關資訊（若 has_a_prior_conviction 為「是」或「不明」時填寫）",
+              "properties": {
+                "prior_conviction_details": {
+                  "type": "string",
+                  "description": "被告所犯之前科內容。（若判決未具體載明前科內容則填「不明」）"
+                },
+                "is_recidivism_same_type": {
+                  "type": "string",
+                  "enum": [
+                    "是",
+                    "否",
+                    "不明"
+                  ],
+                  "description": "本件被告所犯之罪與前科紀錄是否為相關犯罪類型？（若前科內容不明則填「不明」）"
+                },
+                "has_specific_prior_record_mention": {
+                  "type": "boolean",
+                  "description": "本件判決是否有提到具體類型的前案紀錄？（僅提「前案紀錄表」存在但未說明具體罪名或犯罪類型則填 false）"
+                }
+              },
+              "required": [
+                "prior_conviction_details",
+                "is_recidivism_same_type",
+                "has_specific_prior_record_mention"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -499,10 +521,8 @@
             "act_count_issues",
             "has_concurrent_offense_issue",
             "concurrent_offense_articles",
-            "has_criminal_record",
-            "prior_criminal_record_details",
-            "is_recidivism_same_type",
-            "has_specific_prior_record_mention"
+            "has_a_prior_conviction",
+            "prior_conviction_info"
           ],
           "additionalProperties": false
         }
